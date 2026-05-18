@@ -190,12 +190,12 @@ def parse_invoice_data(raw_invoice: dict):
     )
 
     taxable_amount = extract_amount(
-        r'Taxable Amount[:\s]*([\d.,]+)',
+        r'Taxable\s*Amount[^0-9]*([\d,]+)',
         cleaned_text
     )
 
     cgst_match = re.search(
-        r'CGST\s*[:\-]?\s*(\d+)',
+        r'CGST[^0-9]*([\d,]+)',
         cleaned_text,
         re.IGNORECASE
     )
@@ -205,7 +205,7 @@ def parse_invoice_data(raw_invoice: dict):
     ) if cgst_match else 0
 
     sgst_match = re.search(
-        r'SGST\s*[:\-]?\s*(\d+)',
+        r'SGST[^0-9]*([\d,]+)',
         cleaned_text,
         re.IGNORECASE
     )
@@ -215,7 +215,7 @@ def parse_invoice_data(raw_invoice: dict):
     ) if sgst_match else 0
 
     total_amount = extract_amount(
-        r'Total Amount[:\s]*([\d.,]+)',
+        r'Total\s*Amount[^0-9]*([\d,]+)',
         cleaned_text
     )
 
