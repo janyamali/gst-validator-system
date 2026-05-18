@@ -3,9 +3,6 @@ import re
 from datetime import datetime
 
 
-GSTIN_REGEX = r'[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}'
-
-
 def normalize_ocr_text(text):
 
     replacements = {
@@ -27,14 +24,6 @@ def normalize_ocr_text(text):
         "cast": "CGST",
 
         "sast": "SGST",
-
-        "m1350": "1350",
-
-        "m350": "1350",
-
-        "mas2": "2502",
-
-        "m2s02": "2502",
 
         "12Z": "1Z5"
     }
@@ -68,32 +57,24 @@ def extract_gstin(text):
     return matches[0] if matches else None
 
 
-def extract_amount(pattern, text):
+def extract_numeric_value_from_line(keyword, text):
 
-    match = re.search(
-        pattern,
-        text,
-        re.IGNORECASE
-    )
+    lines = text.splitlines()
 
-    if match:
+    for line in lines:
 
-        raw_value = match.group(1)
+        if keyword.lower() in line.lower():
 
-        cleaned = re.sub(
-            r'[^0-9.]',
-            '',
-            raw_value
-        )
+            numbers = re.findall(
+                r'\d+',
+                line
+            )
 
-        if not cleaned:
-            return 0
+            if numbers:
 
-        try:
-            return float(cleaned)
-
-        except:
-            return 0
+                return float(
+                    numbers[-1]
+                )
 
     return 0
 
@@ -207,23 +188,23 @@ def parse_invoice_data(raw_invoice: dict):
         cleaned_text
     )
 
-    taxable_amount = extract_amount(
-        r'Taxable\s*Amount[^0-9]*([0-9,]+)',
+    taxable_amount = extract_numeric_value_from_line(
+        "Taxable Amount",
         cleaned_text
     )
 
-    cgst = extract_amount(
-        r'CGST[^0-9]*([0-9,]+)',
+    cgst = extract_numeric_value_from_line(
+        "CGST",
         cleaned_text
     )
 
-    sgst = extract_amount(
-        r'SGST[^0-9]*([0-9,]+)',
+    sgst = extract_numeric_value_from_line(
+        "SGST",
         cleaned_text
     )
 
-    total_amount = extract_amount(
-        r'Total\s*Amount[^0-9]*([0-9,]+)',
+    total_amount = extract_numeric_value_from_line(
+        "Total Amount",
         cleaned_text
     )
 
