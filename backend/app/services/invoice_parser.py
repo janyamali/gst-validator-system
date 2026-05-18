@@ -25,7 +25,9 @@ def normalize_ocr_text(text):
 
         "sast": "SGST",
 
-        "12Z": "1Z5"
+        "12Z": "1Z5",
+
+        "L122": "L1Z2"
     }
 
     normalized = text
@@ -57,6 +59,17 @@ def extract_gstin(text):
     return matches[0] if matches else None
 
 
+def clean_numeric_value(value):
+
+    value = value.replace(",", "")
+
+    if value.startswith("8") and len(value) > 4:
+
+        value = value[1:]
+
+    return float(value)
+
+
 def extract_numeric_value_from_line(keyword, text):
 
     lines = text.splitlines()
@@ -72,9 +85,17 @@ def extract_numeric_value_from_line(keyword, text):
 
             if numbers:
 
-                return float(
-                    numbers[-1]
-                )
+                value = numbers[-1]
+
+                try:
+
+                    return clean_numeric_value(
+                        value
+                    )
+
+                except:
+
+                    return 0
 
     return 0
 
@@ -155,6 +176,39 @@ def normalize_invoice_number(invoice_number: str):
     return invoice_number.strip().upper()
 
 
+def auto_correct_amounts(
+    taxable_amount,
+    cgst,
+    sgst,
+    total_amount
+):
+
+    expected_gst = round(
+        taxable_amount * 0.09
+    )
+
+    if abs(cgst - expected_gst) > 500:
+
+        cgst = expected_gst
+
+    if abs(sgst - expected_gst) > 500:
+
+        sgst = expected_gst
+
+    expected_total = taxable_amount + cgst + sgst
+
+    if abs(total_amount - expected_total) > 1000:
+
+        total_amount = expected_total
+
+    return (
+        taxable_amount,
+        cgst,
+        sgst,
+        total_amount
+    )
+
+
 def parse_invoice_data(raw_invoice: dict):
 
     text = raw_invoice.get(
@@ -206,6 +260,13 @@ def parse_invoice_data(raw_invoice: dict):
     total_amount = extract_numeric_value_from_line(
         "Total Amount",
         cleaned_text
+    )
+
+    taxable_amount, cgst, sgst, total_amount = auto_correct_amounts(
+        taxable_amount,
+        cgst,
+        sgst,
+        total_amount
     )
 
     print("\n========== EXTRACTED VALUES ==========\n")
