@@ -92,10 +92,45 @@ def extract_numeric_value_from_line(keyword, text):
             if cleaned_numbers:
 
                 return float(
-                    max(cleaned_numbers)
+                    cleaned_numbers[0]
                 )
 
     return 0
+
+def calculate_taxable_from_items(text):
+
+    total = 0
+
+    lines = text.splitlines()
+
+    for line in lines:
+
+        item_match = re.findall(
+            r'\d{3,}',
+            line
+        )
+
+        if len(item_match) >= 1:
+
+            if "Taxable" not in line \
+            and "CGST" not in line \
+            and "SGST" not in line \
+            and "Total" not in line:
+
+                try:
+
+                    value = int(
+                        item_match[-1]
+                    )
+
+                    if value < 100000:
+
+                        total += value
+
+                except:
+                    pass
+
+    return total
 
 
 def extract_vendor_name(text):
@@ -254,8 +289,7 @@ def parse_invoice_data(raw_invoice: dict):
         cleaned_text
     )
 
-    taxable_amount = extract_numeric_value_from_line(
-        "Taxable Amount",
+    taxable_amount = calculate_taxable_from_items(
         cleaned_text
     )
 
