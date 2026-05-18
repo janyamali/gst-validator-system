@@ -10,6 +10,8 @@ def normalize_ocr_text(text):
 
     replacements = {
 
+        "■": "",
+
         "CG5T": "CGST",
 
         "5G5T": "SGST",
@@ -32,7 +34,9 @@ def normalize_ocr_text(text):
 
         "mas2": "2502",
 
-        "m2s02": "2502"
+        "m2s02": "2502",
+
+        "12Z": "1Z5"
     }
 
     normalized = text
@@ -49,7 +53,12 @@ def normalize_ocr_text(text):
 
 def extract_gstin(text):
 
-    pattern = r'\d{2}[A-Z0-9]{13}'
+    text = text.replace(
+        " ",
+        ""
+    )
+
+    pattern = r'[0-9]{2}[A-Z0-9]{13}'
 
     matches = re.findall(
         pattern,
@@ -69,13 +78,22 @@ def extract_amount(pattern, text):
 
     if match:
 
-        value = re.sub(
+        raw_value = match.group(1)
+
+        cleaned = re.sub(
             r'[^0-9.]',
             '',
-            match.group(1)
+            raw_value
         )
 
-        return float(value)
+        if not cleaned:
+            return 0
+
+        try:
+            return float(cleaned)
+
+        except:
+            return 0
 
     return 0
 
@@ -190,32 +208,22 @@ def parse_invoice_data(raw_invoice: dict):
     )
 
     taxable_amount = extract_amount(
-        r'Taxable\s*Amount[^0-9]*([\d,]+)',
+        r'Taxable\s*Amount[^0-9]*([0-9,]+)',
         cleaned_text
     )
 
-    cgst_match = re.search(
-        r'CGST[^0-9]*([\d,]+)',
-        cleaned_text,
-        re.IGNORECASE
+    cgst = extract_amount(
+        r'CGST[^0-9]*([0-9,]+)',
+        cleaned_text
     )
 
-    cgst = float(
-        cgst_match.group(1)
-    ) if cgst_match else 0
-
-    sgst_match = re.search(
-        r'SGST[^0-9]*([\d,]+)',
-        cleaned_text,
-        re.IGNORECASE
+    sgst = extract_amount(
+        r'SGST[^0-9]*([0-9,]+)',
+        cleaned_text
     )
-
-    sgst = float(
-        sgst_match.group(1)
-    ) if sgst_match else 0
 
     total_amount = extract_amount(
-        r'Total\s*Amount[^0-9]*([\d,]+)',
+        r'Total\s*Amount[^0-9]*([0-9,]+)',
         cleaned_text
     )
 
