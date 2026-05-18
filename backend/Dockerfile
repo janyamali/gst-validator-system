@@ -3,14 +3,17 @@ FROM python:3.10
 WORKDIR /app
 
 # # INSTALL TESSERACT
-# RUN apt-get update && apt-get install -y \
-#     tesseract-ocr
+RUN apt-get update && apt-get install -y \
+    tesseract-ocr \
+    poppler-utils \
+    libgl1 \
+    libglib2.0-0
 
 # SYSTEM DEPENDENCIES (PaddleOCR)
-RUN apt-get update && apt-get install -y \
-    libgl1 \
-    libglib2.0-0 \
-    poppler-utils
+# RUN apt-get update && apt-get install -y \
+#     libgl1 \
+#     libglib2.0-0 \
+#     poppler-utils
 
 COPY requirements.txt .
 

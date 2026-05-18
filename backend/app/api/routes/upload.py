@@ -13,8 +13,8 @@ from app.models.invoice import Invoice
 from app.models.validation import Validation
 
 # from app.services.azure_ocr import analyze_invoice
-# from app.services.local_ocr import analyze_invoice
-from app.services.paddle_ocr import analyze_invoice
+from app.services.local_ocr import analyze_invoice
+# from app.services.paddle_ocr import analyze_invoice
 
 from app.services.invoice_parser import parse_invoice_data
 

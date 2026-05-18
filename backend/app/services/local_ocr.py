@@ -1,11 +1,10 @@
 import pytesseract
 
-from PIL import Image
-
 import fitz
 
-import io
+from PIL import Image
 
+import io
 
 
 def extract_text_from_pdf(file_bytes):
@@ -27,9 +26,11 @@ def extract_text_from_pdf(file_bytes):
             io.BytesIO(img_bytes)
         )
 
-        page_text = pytesseract.image_to_string(image)
+        page_text = pytesseract.image_to_string(
+            image
+        )
 
-        text += page_text
+        text += page_text + "\n"
 
     return text
 
@@ -39,6 +40,10 @@ def analyze_invoice(file_bytes):
     extracted_text = extract_text_from_pdf(
         file_bytes
     )
+
+    print("\n========== OCR TEXT ==========\n")
+
+    print(extracted_text)
 
     return [
         {
