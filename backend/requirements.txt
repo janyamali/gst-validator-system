@@ -1,0 +1,19 @@
+fastapi
+uvicorn
+sqlalchemy
+psycopg2-binary
+python-multipart
+pydantic
+python-dotenv
+
+paddleocr==2.6.1.3
+paddlepaddle==2.6.2
+
+opencv-python-headless
+pillow
+PyMuPDF
+numpy==1.26.4
+# tesseract
+
+# pytesseract
+# pdf2image

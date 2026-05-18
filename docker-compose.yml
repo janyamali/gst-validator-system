@@ -1,0 +1,29 @@
+version: '3.9'
+
+services:
+
+  api:
+    build: ./backend
+
+    ports:
+      - "8000:8000"
+
+    env_file:
+      - ./backend/.env
+
+    depends_on:
+      - db
+
+    volumes:
+      - ./backend:/app
+
+  db:
+    image: postgres:15
+
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: gstdb
+
+    ports:
+      - "5432:5432"
