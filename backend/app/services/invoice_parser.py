@@ -59,24 +59,15 @@ def extract_gstin(text):
     return matches[0] if matches else None
 
 
-def clean_numeric_value(value):
-
-    value = value.replace(",", "")
-
-    if value.startswith("8") and len(value) > 4:
-
-        value = value[1:]
-
-    return float(value)
-
-
-def extract_numeric_value_from_line(keyword, text):
+def extract_last_number_from_line(keyword, text):
 
     lines = text.splitlines()
 
     for line in lines:
 
         if keyword.lower() in line.lower():
+
+            print(f"\nMATCHED LINE FOR {keyword}: {line}")
 
             numbers = re.findall(
                 r'\d+',
@@ -85,17 +76,11 @@ def extract_numeric_value_from_line(keyword, text):
 
             if numbers:
 
-                value = numbers[-1]
+                print(f"NUMBERS FOUND: {numbers}")
 
-                try:
-
-                    return clean_numeric_value(
-                        value
-                    )
-
-                except:
-
-                    return 0
+                return float(
+                    numbers[-1]
+                )
 
     return 0
 
@@ -187,17 +172,17 @@ def auto_correct_amounts(
         taxable_amount * 0.09
     )
 
-    if abs(cgst - expected_gst) > 500:
+    if abs(cgst - expected_gst) > 100:
 
         cgst = expected_gst
 
-    if abs(sgst - expected_gst) > 500:
+    if abs(sgst - expected_gst) > 100:
 
         sgst = expected_gst
 
     expected_total = taxable_amount + cgst + sgst
 
-    if abs(total_amount - expected_total) > 1000:
+    if abs(total_amount - expected_total) > 100:
 
         total_amount = expected_total
 
@@ -242,22 +227,22 @@ def parse_invoice_data(raw_invoice: dict):
         cleaned_text
     )
 
-    taxable_amount = extract_numeric_value_from_line(
+    taxable_amount = extract_last_number_from_line(
         "Taxable Amount",
         cleaned_text
     )
 
-    cgst = extract_numeric_value_from_line(
+    cgst = extract_last_number_from_line(
         "CGST",
         cleaned_text
     )
 
-    sgst = extract_numeric_value_from_line(
+    sgst = extract_last_number_from_line(
         "SGST",
         cleaned_text
     )
 
-    total_amount = extract_numeric_value_from_line(
+    total_amount = extract_last_number_from_line(
         "Total Amount",
         cleaned_text
     )
