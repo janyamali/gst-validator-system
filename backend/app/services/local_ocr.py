@@ -6,6 +6,37 @@ from PIL import Image
 
 import io
 
+import cv2
+
+import numpy as np
+
+
+def preprocess_image(image):
+
+    image_np = np.array(image)
+
+    gray = cv2.cvtColor(
+        image_np,
+        cv2.COLOR_BGR2GRAY
+    )
+
+    threshold = cv2.threshold(
+        gray,
+        150,
+        255,
+        cv2.THRESH_BINARY
+    )[1]
+
+    enlarged = cv2.resize(
+        threshold,
+        None,
+        fx=2,
+        fy=2,
+        interpolation=cv2.INTER_CUBIC
+    )
+
+    return enlarged
+
 
 def extract_text_from_pdf(file_bytes):
 
@@ -18,7 +49,7 @@ def extract_text_from_pdf(file_bytes):
 
     for page in pdf_document:
 
-        pix = page.get_pixmap()
+        pix = page.get_pixmap(matrix=fitz.Matrix(3, 3))
 
         img_bytes = pix.tobytes("png")
 
@@ -26,8 +57,13 @@ def extract_text_from_pdf(file_bytes):
             io.BytesIO(img_bytes)
         )
 
-        page_text = pytesseract.image_to_string(
+        processed_image = preprocess_image(
             image
+        )
+
+        page_text = pytesseract.image_to_string(
+            processed_image,
+            config='--psm 6'
         )
 
         text += page_text + "\n"
