@@ -17,3 +17,6 @@ numpy==1.26.4
 
 pytesseract
 pdf2image
+pandas
+openpyxl
+
