@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.models.invoice import Invoice
-from app.api.routes.invoices import router as invoices_router
+
 
 
 router = APIRouter(
@@ -15,6 +15,7 @@ router = APIRouter(
 
 
 @router.get("/")
+#invoices endpoint
 def get_invoices(
     db: Session = Depends(get_db)
 ):
