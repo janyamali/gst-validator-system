@@ -1,59 +1,69 @@
-import customtkinter as ctk
+import streamlit as st
+import pandas as pd
+from services.api import get_invoices
 
-from components.sidebar import Sidebar
-from components.dashboard import Dashboard
+st.set_page_config(
+    page_title="GST Validator",
+    page_icon="📊",
+    layout="wide"
+)
 
+st.title("📊 GST Validator Dashboard")
 
-ctk.set_appearance_mode("dark")
+try:
 
-ctk.set_default_color_theme("blue")
+    invoices = get_invoices()
 
+    total_invoices = len(invoices)
 
-class GSTValidatorApp(ctk.CTk):
+    total_gst = sum(
+        i["cgst"] + i["sgst"] + i["igst"]
+        for i in invoices
+    )
 
-    def __init__(self):
+    total_value = sum(
+        i["total_amount"]
+        for i in invoices
+    )
 
-        super().__init__()
-
-        self.title("GST Validator")
-
-        self.geometry("1600x900")
-
-        self.configure(
-            fg_color="#061226"
+    unique_vendors = len(
+        set(
+            i["vendor_name"]
+            for i in invoices
         )
+    )
 
-        self.grid_columnconfigure(
-            1,
-            weight=1
-        )
+except:
 
-        self.grid_rowconfigure(
-            0,
-            weight=1
-        )
+    total_invoices = 0
+    total_gst = 0
+    total_value = 0
+    unique_vendors = 0
 
-        self.sidebar = Sidebar(self)
+col1, col2, col3, col4 = st.columns(4)
 
-        self.sidebar.grid(
-            row=0,
-            column=0,
-            sticky="ns"
-        )
+col1.metric(
+    "Invoices",
+    total_invoices
+)
 
-        self.dashboard = Dashboard(self)
+col2.metric(
+    "GST Collected",
+    f"₹{total_gst:,.0f}"
+)
 
-        self.dashboard.grid(
-            row=0,
-            column=1,
-            sticky="nsew",
-            padx=20,
-            pady=20
-        )
+col3.metric(
+    "Invoice Value",
+    f"₹{total_value:,.0f}"
+)
 
+col4.metric(
+    "Vendors",
+    unique_vendors
+)
 
-if __name__ == "__main__":
+st.divider()
 
-    app = GSTValidatorApp()
-
-    app.mainloop()
+st.info(
+    "Use the sidebar to upload invoices, analyze data, and export reports."
+)
