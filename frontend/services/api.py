@@ -1,6 +1,11 @@
 import requests
 
-BASE_URL = "https://gst-validator-system.onrender.com"
+import os
+
+BASE_URL = os.getenv(
+    "BACKEND_URL",
+    "https://gst-validator-system.onrender.com"
+)
 
 
 def get_invoices():
