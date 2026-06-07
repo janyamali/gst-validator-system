@@ -20,6 +20,10 @@ class Invoice(Base):
         default=uuid.uuid4
     )
 
+    # PDF DATA
+
+    claim_voucher_number = Column(String)
+
     vendor_name = Column(String)
 
     gstin = Column(String)
@@ -37,3 +41,13 @@ class Invoice(Base):
     igst = Column(Numeric)
 
     total_amount = Column(Numeric)
+
+    # CLAIM DATA
+
+    claimed_amount = Column(Numeric)
+
+    claimed_gst = Column(Numeric)
+
+    # FINAL RESULT
+
+    validation_status = Column(String)

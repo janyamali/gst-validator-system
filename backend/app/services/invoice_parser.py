@@ -162,6 +162,33 @@ def extract_invoice_number(text):
 
     return "INV-TEMP"
 
+def extract_claim_voucher_number(text):
+
+    patterns = [
+
+        r'Claim Voucher Number[:\s]*([A-Z0-9\-]+)',
+
+        r'Claim Voucher No[:\s]*([A-Z0-9\-]+)',
+
+        r'Voucher Number[:\s]*([A-Z0-9\-]+)',
+
+        r'Voucher No[:\s]*([A-Z0-9\-]+)'
+    ]
+
+    for pattern in patterns:
+
+        match = re.search(
+            pattern,
+            text,
+            re.IGNORECASE
+        )
+
+        if match:
+
+            return match.group(1).strip()
+
+    return None
+
 
 def extract_invoice_date(text):
 
@@ -285,6 +312,14 @@ def parse_invoice_data(raw_invoice: dict):
         cleaned_text
     )
 
+    claim_voucher_number = extract_claim_voucher_number(
+    cleaned_text
+    )
+    print(
+    "Claim Voucher Number:",
+    claim_voucher_number
+    )
+
     invoice_date = extract_invoice_date(
         cleaned_text
     )
@@ -346,6 +381,8 @@ def parse_invoice_data(raw_invoice: dict):
         "invoice_number": normalize_invoice_number(
             invoice_number
         ),
+
+        "claim_voucher_number": claim_voucher_number,
 
         "invoice_date": invoice_date,
 

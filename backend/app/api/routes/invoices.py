@@ -26,40 +26,49 @@ def get_invoices(
 
     return [
 
-        {
+    {
 
-            "id": str(invoice.id),
+        "id": str(invoice.id),
 
-            "vendor_name": invoice.vendor_name,
+        "claim_voucher_number":
+        invoice.claim_voucher_number,
 
-            "gstin": invoice.gstin,
+        "vendor_name":
+        invoice.vendor_name,
 
-            "invoice_number": invoice.invoice_number,
+        "gstin":
+        invoice.gstin,
 
-            "invoice_date": str(
-                invoice.invoice_date
-            ),
+        "invoice_number":
+        invoice.invoice_number,
 
-            "taxable_amount": float(
-                invoice.taxable_amount
-            ),
+        "invoice_date":
+        str(invoice.invoice_date),
 
-            "cgst": float(
-                invoice.cgst
-            ),
+        "taxable_amount":
+        float(invoice.taxable_amount),
 
-            "sgst": float(
-                invoice.sgst
-            ),
+        "cgst":
+        float(invoice.cgst),
 
-            "igst": float(
-                invoice.igst
-            ),
+        "sgst":
+        float(invoice.sgst),
 
-            "total_amount": float(
-                invoice.total_amount
-            )
-        }
+        "igst":
+        float(invoice.igst),
 
-        for invoice in invoices
-    ]
+        "total_amount":
+        float(invoice.total_amount),
+
+        "claimed_amount":
+        float(invoice.claimed_amount),
+
+        "claimed_gst":
+        float(invoice.claimed_gst),
+
+        "validation_status":
+        invoice.validation_status
+    }
+
+    for invoice in invoices
+]

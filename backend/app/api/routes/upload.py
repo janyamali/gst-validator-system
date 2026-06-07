@@ -26,74 +26,82 @@ from app.services.matcher import match_claim_with_invoice
 
 from fastapi import Form
 
+from app.services.excel_parser import (
+    load_claims_excel,
+    find_claim_by_voucher
+)
 
 router = APIRouter(
     prefix="/upload",
     tags=["Upload"]
 )
 
-
 @router.post("/")
 async def upload_invoice(
 
-    file: UploadFile = File(...),
+    invoice_pdf: UploadFile = File(...),
 
-    employee_name: str = Form(...),
-
-    claim_number: str = Form(...),
-
-    claimed_amount: float = Form(...),
-
-    claimed_gst: float = Form(...),
-
-    vendor_name: str = Form(...),
-
-    invoice_number: str = Form(...),
+    claims_excel: UploadFile = File(...),
 
     db: Session = Depends(get_db)
 ):
 
-    # READ FILE
-    content = await file.read()
+    pdf_content = await invoice_pdf.read()
 
-    # OCR EXTRACTION
-    raw_invoices = analyze_invoice(content)
+    excel_content = await claims_excel.read()
+
+    claims_df = load_claims_excel(
+        excel_content
+    )
+
+    raw_invoices = analyze_invoice(
+        pdf_content
+    )
 
     processed_invoices = []
 
     for invoice in raw_invoices:
 
-        # STEP 1 — PARSE INVOICE
-        parsed_invoice = parse_invoice_data(invoice)
+        parsed_invoice = parse_invoice_data(
+            invoice
+        )
 
-        # STEP 2 — DUPLICATE DETECTION
+        claim_data = find_claim_by_voucher(
+
+            parsed_invoice[
+                "claim_voucher_number"
+            ],
+
+            claims_df
+        )
+
+        if claim_data is None:
+
+            processed_invoices.append({
+
+                "error":
+                "Claim Voucher Number not found",
+
+                "voucher":
+                parsed_invoice[
+                    "claim_voucher_number"
+                ]
+            })
+
+            continue
+
         duplicate_detected = detect_duplicate(
+
             db,
+
             parsed_invoice
         )
 
-        # STEP 3 — GST VALIDATION
         validation_result = validate_invoice(
+
             parsed_invoice
         )
 
-        # STEP 4 — CLAIM DATA
-        claim_data = {
-
-    "employee_name": employee_name,
-
-    "claim_number": claim_number,
-
-    "claimed_amount": claimed_amount,
-
-    "claimed_gst": claimed_gst,
-
-    "vendor_name": vendor_name,
-
-    "invoice_number": invoice_number
-}
-
-        # STEP 5 — CLAIM MATCHING
         match_result = match_claim_with_invoice(
 
             claim_data,
@@ -101,29 +109,105 @@ async def upload_invoice(
             parsed_invoice
         )
 
-        # STEP 6 — SAVE INVOICE
+        final_status = (
+
+            "VALID"
+
+            if (
+
+                validation_result[
+                    "overall_valid"
+                ]
+
+                and
+
+                match_result[
+                    "overall_match"
+                ]
+
+                and
+
+                not duplicate_detected
+
+            )
+
+            else
+
+            "INVALID"
+        )
+
+        # SAVE INVOICE
+
         invoice_record = Invoice(
 
-            vendor_name=parsed_invoice["vendor_name"],
+            claim_voucher_number=
+            parsed_invoice[
+                "claim_voucher_number"
+            ],
 
-            gstin=parsed_invoice["gstin"],
+            vendor_name=
+            parsed_invoice[
+                "vendor_name"
+            ],
 
-            invoice_number=parsed_invoice["invoice_number"],
+            gstin=
+            parsed_invoice[
+                "gstin"
+            ],
 
-            invoice_date=datetime.strptime(
-                parsed_invoice["invoice_date"],
+            invoice_number=
+            parsed_invoice[
+                "invoice_number"
+            ],
+
+            invoice_date=
+            datetime.strptime(
+
+                parsed_invoice[
+                    "invoice_date"
+                ],
+
                 "%Y-%m-%d"
+
             ).date(),
 
-            taxable_amount=parsed_invoice["taxable_amount"],
+            taxable_amount=
+            parsed_invoice[
+                "taxable_amount"
+            ],
 
-            cgst=parsed_invoice["cgst"],
+            cgst=
+            parsed_invoice[
+                "cgst"
+            ],
 
-            sgst=parsed_invoice["sgst"],
+            sgst=
+            parsed_invoice[
+                "sgst"
+            ],
 
-            igst=parsed_invoice["igst"],
+            igst=
+            parsed_invoice[
+                "igst"
+            ],
 
-            total_amount=parsed_invoice["total_amount"]
+            total_amount=
+            parsed_invoice[
+                "total_amount"
+            ],
+
+            claimed_amount=
+            claim_data[
+                "claimed_amount"
+            ],
+
+            claimed_gst=
+            claim_data[
+                "claimed_gst"
+            ],
+
+            validation_status=
+            final_status
         )
 
         db.add(invoice_record)
@@ -132,44 +216,108 @@ async def upload_invoice(
 
         db.refresh(invoice_record)
 
-        # STEP 7 — SAVE VALIDATION RESULT
+        # SAVE VALIDATION
+
         validation_record = Validation(
 
-            invoice_id=invoice_record.id,
+            invoice_id=
+            invoice_record.id,
 
-            status=(
-                "VALID"
-                if validation_result["overall_valid"]
-                else "INVALID"
-            ),
+            status=
+            final_status,
 
-            remarks="GST Validation Completed",
+            remarks=
+            "Validation Completed",
 
             validated_gst=(
-                parsed_invoice["cgst"] +
-                parsed_invoice["sgst"] +
-                parsed_invoice["igst"]
+
+                parsed_invoice[
+                    "cgst"
+                ]
+
+                +
+
+                parsed_invoice[
+                    "sgst"
+                ]
+
+                +
+
+                parsed_invoice[
+                    "igst"
+                ]
             ),
 
-            mismatch_amount=0,
+            mismatch_amount=
+            abs(
 
-            duplicate_detected=duplicate_detected
+                float(
+                    claim_data[
+                        "claimed_amount"
+                    ]
+                )
+
+                -
+
+                float(
+                    parsed_invoice[
+                        "total_amount"
+                    ]
+                )
+            ),
+
+            duplicate_detected=
+            duplicate_detected,
+
+            voucher_match=
+            match_result[
+                "voucher_match"
+            ],
+
+            vendor_match=
+            match_result[
+                "vendor_match"
+            ],
+
+            invoice_match=
+            match_result[
+                "invoice_number_match"
+            ],
+
+            amount_match=
+            match_result[
+                "amount_match"
+            ],
+
+            gst_match=
+            match_result[
+                "gst_match"
+            ]
         )
 
         db.add(validation_record)
 
         db.commit()
 
-        # STEP 8 — FINAL RESPONSE
         processed_invoices.append({
 
-            "parsed_invoice": parsed_invoice,
+            "claim_data":
+            claim_data,
 
-            "validation": validation_result,
+            "parsed_invoice":
+            parsed_invoice,
 
-            "duplicate_detected": duplicate_detected,
+            "validation":
+            validation_result,
 
-            "claim_match": match_result
+            "duplicate_detected":
+            duplicate_detected,
+
+            "claim_match":
+            match_result,
+
+            "status":
+            final_status
         })
 
     return {

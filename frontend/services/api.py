@@ -13,25 +13,12 @@ def get_invoices():
     try:
 
         response = requests.get(
-            f"{BASE_URL}/invoices/",
-            timeout=30
+            f"{BASE_URL}/invoices/"
         )
 
         response.raise_for_status()
 
         return response.json()
-
-    except requests.exceptions.Timeout:
-
-        return {
-            "error": "Server timeout. Render may be waking up."
-        }
-
-    except requests.exceptions.ConnectionError:
-
-        return {
-            "error": "Unable to connect to server."
-        }
 
     except Exception as e:
 
@@ -46,34 +33,31 @@ def export_excel():
 
 
 def upload_invoice(
-    file,
-    employee_name,
-    claim_number,
-    claimed_amount,
-    claimed_gst,
-    vendor_name,
-    invoice_number
+    invoice_pdf,
+    claims_excel
 ):
 
     try:
 
         files = {
-            "file": file
-        }
 
-        data = {
+            "invoice_pdf": (
 
-            "employee_name": employee_name,
+                invoice_pdf.name,
 
-            "claim_number": claim_number,
+                invoice_pdf,
 
-            "claimed_amount": claimed_amount,
+                "application/pdf"
+            ),
 
-            "claimed_gst": claimed_gst,
+            "claims_excel": (
 
-            "vendor_name": vendor_name,
+                claims_excel.name,
 
-            "invoice_number": invoice_number
+                claims_excel,
+
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            )
         }
 
         response = requests.post(
@@ -82,26 +66,12 @@ def upload_invoice(
 
             files=files,
 
-            data=data,
-
-            timeout=60
+            timeout=120
         )
 
         response.raise_for_status()
 
         return response.json()
-
-    except requests.exceptions.Timeout:
-
-        return {
-            "error": "OCR processing timeout."
-        }
-
-    except requests.exceptions.ConnectionError:
-
-        return {
-            "error": "Cannot connect to backend."
-        }
 
     except Exception as e:
 

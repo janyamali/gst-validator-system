@@ -34,3 +34,13 @@ class Validation(Base):
     mismatch_amount = Column(Numeric)
 
     duplicate_detected = Column(Boolean)
+
+    voucher_match = Column(Boolean)
+
+    vendor_match = Column(Boolean)
+
+    invoice_match = Column(Boolean)
+
+    amount_match = Column(Boolean)
+
+    gst_match = Column(Boolean)
