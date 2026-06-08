@@ -92,10 +92,6 @@ def match_claim_with_invoice(
 
     overall_match = (
 
-        voucher_match
-
-        and
-
         amount_match
 
         and
@@ -122,8 +118,6 @@ def match_claim_with_invoice(
         "amount_match":
         amount_match,
 
-        "vendor_match":
-        vendor_match,
 
         "invoice_number_match":
         invoice_number_match,

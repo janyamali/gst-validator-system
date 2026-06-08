@@ -16,45 +16,47 @@ def load_claims_excel(excel_bytes):
     return df
 
 
-def find_claim_by_voucher(
-    voucher_number,
+def find_claim_by_invoice_number(
+    invoice_number,
     claims_df
 ):
 
-    matches = claims_df[
+    claims_df.columns = (
+        claims_df.columns
+        .str.strip()
+        .str.lower()
+        .str.replace(" ", "_")
+    )
 
-        claims_df[
-            "claim_voucher_number"
-        ].astype(str).str.strip()
+    invoice_number = (
+    str(invoice_number)
+    .strip()
+    .replace("-", "")
+    .replace(" ", "")
+    .upper()
+    )
 
-        ==
+    match = claims_df[
 
-        str(voucher_number).strip()
+    claims_df["invoice_number"]
+
+    .astype(str)
+
+    .str.strip()
+
+    .str.replace("-", "", regex=False)
+
+    .str.replace(" ", "", regex=False)
+
+    .str.upper()
+
+    ==
+
+    invoice_number
     ]
 
-    if len(matches) == 0:
+    if len(match) == 0:
 
         return None
 
-    row = matches.iloc[0]
-
-    return {
-
-        "claim_voucher_number":
-        row["claim_voucher_number"],
-
-        "employee_name":
-        row["employee_name"],
-
-        "vendor_name":
-        row["vendor_name"],
-
-        "invoice_number":
-        row["invoice_number"],
-
-        "claimed_amount":
-        float(row["claimed_amount"]),
-
-        "claimed_gst":
-        float(row["claimed_gst"])
-    }
+    return match.iloc[0].to_dict()

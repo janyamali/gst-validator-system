@@ -66,10 +66,10 @@ async def upload_invoice(
             invoice
         )
 
-        claim_data = find_claim_by_voucher(
+        claim_data = find_claim_by_invoice_number(
 
             parsed_invoice[
-                "claim_voucher_number"
+                "invoice_number"
             ],
 
             claims_df
