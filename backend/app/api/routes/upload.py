@@ -75,6 +75,9 @@ async def upload_invoice(
             claims_df
         )
 
+        print("\nNORMALIZED CLAIM DATA:")
+        print(claim_data)
+
         if claim_data is None:
 
             processed_invoices.append({
@@ -255,32 +258,25 @@ async def upload_invoice(
             abs(
 
                 float(
-                    claim_data[
-                        "claimed_amount"
-                    ]
+                    claim_data.get(
+                    "claimed_amount",
+                        0
+                    )
                 )
 
                 -
 
                 float(
-                    parsed_invoice[
-                        "total_amount"
-                    ]
+                    parsed_invoice.get(
+                        "total_amount",
+                        0
+                    )
                 )
-            ),
-
+            ),  
             duplicate_detected=
             duplicate_detected,
 
-            voucher_match=
-            match_result[
-                "voucher_match"
-            ],
-
-            vendor_match=
-            match_result[
-                "vendor_match"
-            ],
+            voucher_match=False,
 
             invoice_match=
             match_result[
