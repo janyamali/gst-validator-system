@@ -102,6 +102,9 @@ async def upload_invoice(
             parsed_invoice
         )
 
+        print("CLAIM DATA:")
+        print(claim_data)
+
         match_result = match_claim_with_invoice(
 
             claim_data,
