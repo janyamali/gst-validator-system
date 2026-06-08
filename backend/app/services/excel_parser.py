@@ -2,16 +2,17 @@ import pandas as pd
 from io import BytesIO
 
 
-def load_claims_excel(excel_bytes):
+def load_claims_excel(excel_content):
+
+    import pandas as pd
+    from io import BytesIO
 
     df = pd.read_excel(
-        BytesIO(excel_bytes)
+        BytesIO(excel_content)
     )
 
-    df.columns = [
-        col.strip().lower()
-        for col in df.columns
-    ]
+    print("\nEXCEL COLUMNS:")
+    print(df.columns.tolist())
 
     return df
 
