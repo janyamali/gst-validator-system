@@ -3,24 +3,25 @@ def match_claim_with_invoice(
     invoice
 ):
 
-    voucher_match = (
+    invoice_number_match = (
 
         str(
-            claim["claim_voucher_number"]
+            claim["invoice_number"]
         ).strip().upper()
 
         ==
 
         str(
-            invoice["claim_voucher_number"]
+            invoice["invoice_number"]
         ).strip().upper()
     )
 
     amount_match = (
 
         abs(
+
             float(
-                claim["claimed_amount"]
+                claim["TOTAL"]
             )
 
             -
@@ -34,73 +35,65 @@ def match_claim_with_invoice(
 
     vendor_match = (
 
-        claim["vendor_name"]
-        .strip()
-        .lower()
+        str(
+            claim["VENDOR"]
+        ).strip().lower()
 
         ==
 
-        invoice["vendor_name"]
-        .strip()
-        .lower()
+        str(
+            invoice["vendor_name"]
+        ).strip().lower()
     )
 
-    invoice_number_match = (
+    claimed_gst = (
 
-        claim["invoice_number"]
-        .strip()
-        .upper()
+        float(
+            claim["CGST"]
+        )
 
-        ==
+        +
 
-        invoice["invoice_number"]
-        .strip()
-        .upper()
+        float(
+            claim["SGST"]
+        )
+    )
+
+    invoice_gst = (
+
+        float(
+            invoice["cgst"]
+        )
+
+        +
+
+        float(
+            invoice["sgst"]
+        )
+
+        +
+
+        float(
+            invoice["igst"]
+        )
     )
 
     gst_match = (
 
         abs(
-
-            float(
-                claim["claimed_gst"]
-            )
-
+            claimed_gst
             -
-
-            (
-
-                float(
-                    invoice["cgst"]
-                )
-
-                +
-
-                float(
-                    invoice["sgst"]
-                )
-
-                +
-
-                float(
-                    invoice["igst"]
-                )
-            )
-
+            invoice_gst
         ) <= 2
     )
 
     overall_match = (
 
-        amount_match
-
-        and
-
-        vendor_match
-
-        and
-
         invoice_number_match
+
+        and
+
+        amount_match
 
         and
 
@@ -112,15 +105,14 @@ def match_claim_with_invoice(
         "overall_match":
         overall_match,
 
-        "voucher_match":
-        voucher_match,
+        "invoice_number_match":
+        invoice_number_match,
 
         "amount_match":
         amount_match,
 
-
-        "invoice_number_match":
-        invoice_number_match,
+        "vendor_match":
+        vendor_match,
 
         "gst_match":
         gst_match
