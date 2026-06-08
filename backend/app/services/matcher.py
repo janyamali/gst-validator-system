@@ -21,7 +21,7 @@ def match_claim_with_invoice(
         abs(
 
             float(
-                claim["total"]
+                claim["claimed_amount"]
             )
 
             -
@@ -36,7 +36,7 @@ def match_claim_with_invoice(
     vendor_match = (
 
         str(
-            claim["vendor"]
+            claim["vendor_name"]
         ).strip().lower()
 
         in
@@ -44,19 +44,6 @@ def match_claim_with_invoice(
         str(
             invoice["vendor_name"]
         ).strip().lower()
-    )
-
-    claimed_gst = (
-
-        float(
-            claim["cgst"]
-        )
-
-        +
-
-        float(
-            claim["sgst"]
-        )
     )
 
     invoice_gst = (
@@ -81,9 +68,15 @@ def match_claim_with_invoice(
     gst_match = (
 
         abs(
-            claimed_gst
+
+            float(
+                claim["claimed_gst"]
+            )
+
             -
+
             invoice_gst
+
         ) <= 2
     )
 
