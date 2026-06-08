@@ -135,30 +135,49 @@ def calculate_taxable_from_items(text):
 
 def extract_vendor_name(text):
 
-    match = re.search(
-        r'Vendor[:\s]*(.*)',
-        text,
-        re.IGNORECASE
-    )
+    lines = text.splitlines()
 
-    if match:
+    for line in lines[:15]:
 
-        return match.group(1).strip()
+        if "invoice no" in line.lower():
+
+            vendor = line.split(
+                "Invoice No"
+            )[0].strip()
+
+            if vendor:
+
+                return vendor
 
     return "Unknown Vendor"
 
 
 def extract_invoice_number(text):
 
-    match = re.search(
-        r'Invoice Number[:\s]*([A-Z0-9\-]+)',
-        text,
-        re.IGNORECASE
-    )
+    patterns = [
 
-    if match:
+        r'Invoice\s+No\.?\s*([A-Z0-9\-]+)',
 
-        return match.group(1).strip()
+        r'Invoice\s+Number[:\s]*([A-Z0-9\-]+)',
+
+        r'Invoice\s*#[:\s]*([A-Z0-9\-]+)'
+    ]
+
+    for pattern in patterns:
+
+        match = re.search(
+            pattern,
+            text,
+            re.IGNORECASE
+        )
+
+        if match:
+
+            return (
+                match.group(1)
+                .strip()
+                .upper()
+            )
 
     return "INV-TEMP"
 
