@@ -141,21 +141,35 @@ def calculate_taxable_from_items(text):
 
 def extract_vendor_name(text):
 
-    lines = text.splitlines()
+    lines = [
 
-    for i, line in enumerate(lines):
+        line.strip()
+
+        for line in text.splitlines()
+
+        if line.strip()
+    ]
+
+    # Pattern:
+    # "Synergy Electronics Invoice No. SY1211"
+
+    for line in lines:
 
         if "invoice no" in line.lower():
 
-            if i > 0:
+            vendor = re.split(
+                r'Invoice\s+No',
+                line,
+                flags=re.IGNORECASE
+            )[0].strip()
 
-                vendor = lines[i - 1].strip()
+            if vendor:
 
-                if vendor:
+                return vendor
 
-                    return vendor
+    # Fallback
 
-    return "Unknown Vendor"
+    return lines[0] if lines else "Unknown Vendor"
 
 
 def extract_invoice_number(text):
