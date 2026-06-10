@@ -12,9 +12,7 @@ from app.core.database import get_db
 from app.models.invoice import Invoice
 from app.models.validation import Validation
 
-# from app.services.azure_ocr import analyze_invoice
 from app.services.local_ocr import analyze_invoice
-# from app.services.paddle_ocr import analyze_invoice
 
 from app.services.invoice_parser import parse_invoice_data
 
@@ -23,8 +21,6 @@ from app.services.gst_validator import validate_invoice
 from app.services.duplicate_detector import detect_duplicate
 
 from app.services.matcher import match_claim_with_invoice
-
-from fastapi import Form
 
 from app.services.excel_parser import (
     load_claims_excel,
@@ -35,6 +31,7 @@ router = APIRouter(
     prefix="/upload",
     tags=["Upload"]
 )
+
 
 @router.post("/")
 async def upload_invoice(
@@ -83,11 +80,11 @@ async def upload_invoice(
             processed_invoices.append({
 
                 "error":
-                "Claim Voucher Number not found",
+                "Invoice Number not found in Excel",
 
-                "voucher":
+                "invoice_number":
                 parsed_invoice[
-                    "claim_voucher_number"
+                    "invoice_number"
                 ]
             })
 
@@ -104,9 +101,6 @@ async def upload_invoice(
 
             parsed_invoice
         )
-
-        print("CLAIM DATA:")
-        print(claim_data)
 
         match_result = match_claim_with_invoice(
 
@@ -142,7 +136,10 @@ async def upload_invoice(
             "INVALID"
         )
 
-        # SAVE INVOICE
+        invoice_date = datetime.strptime(
+            parsed_invoice["invoice_date"],
+            "%Y-%m-%d"
+        ).date()
 
         invoice_record = Invoice(
 
@@ -167,15 +164,7 @@ async def upload_invoice(
             ],
 
             invoice_date=
-            datetime.strptime(
-
-                parsed_invoice[
-                    "invoice_date"
-                ],
-
-                "%Y-%m-%d"
-
-            ).date(),
+            invoice_date,
 
             taxable_amount=
             parsed_invoice[
@@ -222,8 +211,6 @@ async def upload_invoice(
 
         db.refresh(invoice_record)
 
-        # SAVE VALIDATION
-
         validation_record = Validation(
 
             invoice_id=
@@ -259,7 +246,7 @@ async def upload_invoice(
 
                 float(
                     claim_data.get(
-                    "claimed_amount",
+                        "claimed_amount",
                         0
                     )
                 )
@@ -272,11 +259,17 @@ async def upload_invoice(
                         0
                     )
                 )
-            ),  
+            ),
+
             duplicate_detected=
             duplicate_detected,
 
             voucher_match=False,
+
+            vendor_match=
+            match_result[
+                "vendor_match"
+            ],
 
             invoice_match=
             match_result[

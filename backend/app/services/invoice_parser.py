@@ -222,31 +222,37 @@ def extract_invoice_date(text):
 
     patterns = [
 
-        r'Invoice Date[:\s]*([\d]{4}-[\d]{2}-[\d]{2})',
+        r'(\d{2}/\d{2}/\d{4})',
 
-        r'Invoice Date[:\s]*([\d]{2}/[\d]{2}/[\d]{4})',
-
-        r'Date[:\s]*([\d]{4}-[\d]{2}-[\d]{2})',
-
-        r'Date[:\s]*([\d]{2}/[\d]{2}/[\d]{4})'
+        r'(\d{4}-\d{2}-\d{2})'
     ]
 
     for pattern in patterns:
 
         match = re.search(
             pattern,
-            text,
-            re.IGNORECASE
+            text
         )
 
         if match:
 
-            return match.group(1)
+            date_str = match.group(1)
 
-    return str(
-        datetime.today().date()
-    )
+            try:
 
+                if "/" in date_str:
+
+                    return datetime.strptime(
+                        date_str,
+                        "%d/%m/%Y"
+                    ).strftime("%Y-%m-%d")
+
+                return date_str
+
+            except:
+                pass
+
+    return str(datetime.today().date())
 
 def normalize_vendor_name(name: str):
 
