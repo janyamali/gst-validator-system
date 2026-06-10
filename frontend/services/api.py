@@ -4,7 +4,7 @@ import os
 
 BASE_URL = os.getenv(
     "BACKEND_URL",
-    "https://gst-validator-system.onrender.com"
+    "https://gst-validator-backend.onrender.com"
 )
 
 
