@@ -63,74 +63,80 @@ def extract_numeric_value_from_line(keyword, text):
 
     lines = text.splitlines()
 
+    keyword_aliases = {
+
+        "CGST": ["CGST", "C GST"],
+
+        "SGST": ["SGST", "S GST"],
+
+        "TOTAL": [
+            "Total Amount",
+            "Grand Total",
+            "Nettotal"
+        ]
+    }
+
+    search_terms = keyword_aliases.get(
+        keyword,
+        [keyword]
+    )
+
     for line in lines:
 
-        if keyword.lower() in line.lower():
+        if any(
 
-            print(f"\nMATCHED LINE FOR {keyword}: {line}")
+            term.lower() in line.lower()
+
+            for term in search_terms
+        ):
+
+            print(
+                f"\nMATCHED LINE FOR {keyword}: {line}"
+            )
 
             numbers = re.findall(
-                r'\d{3,}',
+                r'\d+',
                 line
             )
 
-            print(f"NUMBERS FOUND: {numbers}")
+            print(
+                f"NUMBERS FOUND: {numbers}"
+            )
 
-            cleaned_numbers = []
-
-            for number in numbers:
-
-                try:
-
-                    cleaned_numbers.append(
-                        int(number)
-                    )
-
-                except:
-                    pass
-
-            if cleaned_numbers:
+            if numbers:
 
                 return float(
-                    cleaned_numbers[0]
+                    numbers[-1]
                 )
 
     return 0
 
-def calculate_taxable_from_items(text):
 
-    total = 0
+def calculate_taxable_from_items(text):
 
     lines = text.splitlines()
 
     for line in lines:
 
-        item_match = re.findall(
-            r'\d{3,}',
-            line
-        )
+        if "EWC" in line or "NOS" in line:
 
-        if len(item_match) >= 1:
+            numbers = re.findall(
+                r'\d+',
+                line
+            )
 
-            if "Taxable" not in line \
-            and "CGST" not in line \
-            and "SGST" not in line \
-            and "Total" not in line:
+            if numbers:
 
                 try:
 
-                    value = int(
-                        item_match[-1]
+                    return int(
+                        numbers[-1]
                     )
-
-                    if value < 100000:
-
-                        total += value
 
                 except:
                     pass
 
-    return total
+    return 0
 
 
 def extract_vendor_name(text):
@@ -180,6 +186,7 @@ def extract_invoice_number(text):
             )
 
     return "INV-TEMP"
+
 
 def extract_claim_voucher_number(text):
 
@@ -309,14 +316,14 @@ def parse_invoice_data(raw_invoice: dict):
         ""
     )
 
-    cleaned_text = normalize_ocr_text(text)
+    cleaned_text = normalize_ocr_text(
+        text
+    )
 
     print("\n========== RAW OCR TEXT ==========\n")
-
     print(text)
 
     print("\n========== CLEANED OCR TEXT ==========\n")
-
     print(cleaned_text)
 
     gstin = extract_gstin(
@@ -332,11 +339,12 @@ def parse_invoice_data(raw_invoice: dict):
     )
 
     claim_voucher_number = extract_claim_voucher_number(
-    cleaned_text
+        cleaned_text
     )
+
     print(
-    "Claim Voucher Number:",
-    claim_voucher_number
+        "Claim Voucher Number:",
+        claim_voucher_number
     )
 
     invoice_date = extract_invoice_date(
@@ -358,9 +366,15 @@ def parse_invoice_data(raw_invoice: dict):
     )
 
     total_amount = extract_numeric_value_from_line(
-        "Total Amount",
+        "TOTAL",
         cleaned_text
     )
+
+    if taxable_amount == 0 and total_amount > 0:
+
+        taxable_amount = round(
+            total_amount / 1.18
+        )
 
     taxable_amount, cgst, sgst, total_amount = auto_correct_amounts(
         taxable_amount,
@@ -372,24 +386,17 @@ def parse_invoice_data(raw_invoice: dict):
     print("\n========== EXTRACTED VALUES ==========\n")
 
     print("Vendor Name:", vendor_name)
-
     print("GSTIN:", gstin)
-
     print("Invoice Number:", invoice_number)
-
     print("Invoice Date:", invoice_date)
-
     print("Taxable Amount:", taxable_amount)
-
     print("CGST:", cgst)
-
     print("SGST:", sgst)
-
     print("Total Amount:", total_amount)
 
     print("\n======================================\n")
 
-    parsed_data = {
+    return {
 
         "vendor_name": normalize_vendor_name(
             vendor_name
@@ -415,5 +422,3 @@ def parse_invoice_data(raw_invoice: dict):
 
         "total_amount": total_amount
     }
-
-    return parsed_data

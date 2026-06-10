@@ -43,6 +43,12 @@ def find_claim_by_invoice_number(
         .upper()
     )
 
+    print("\nEXCEL COLUMNS:")
+    print(claims_df.columns.tolist())
+
+    print("\nLOOKING FOR:")
+    print(invoice_number)
+
     match = claims_df[
 
         claims_df[
