@@ -143,17 +143,17 @@ def extract_vendor_name(text):
 
     lines = text.splitlines()
 
-    for line in lines[:15]:
+    for i, line in enumerate(lines):
 
         if "invoice no" in line.lower():
 
-            vendor = line.split(
-                "Invoice No"
-            )[0].strip()
+            if i > 0:
 
-            if vendor:
+                vendor = lines[i - 1].strip()
 
-                return vendor
+                if vendor:
+
+                    return vendor
 
     return "Unknown Vendor"
 
@@ -162,7 +162,9 @@ def extract_invoice_number(text):
 
     patterns = [
 
-        r'Invoice\s+No\.?\s*([A-Z0-9\-]+)',
+        r'Invoice\s+No[:\s]*([A-Z0-9\-]+)',
+
+        r'Invoice\s+No\.?[:\s]*([A-Z0-9\-]+)',
 
         r'Invoice\s+Number[:\s]*([A-Z0-9\-]+)',
 
