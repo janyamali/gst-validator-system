@@ -22,6 +22,8 @@ from app.services.duplicate_detector import detect_duplicate
 
 from app.services.matcher import match_claim_with_invoice
 
+from app.services.ai_reasoning import generate_reason
+
 from app.services.excel_parser import (
     load_claims_excel,
     find_claim_by_invoice_number
@@ -135,6 +137,21 @@ async def upload_invoice(
 
             "INVALID"
         )
+
+        ai_reason = generate_reason(
+
+            validation_result,
+
+            match_result,
+
+            duplicate_detected,
+
+            final_status
+        )
+
+        print("\n========== AI REASON ==========")
+        print(ai_reason)
+        print("===============================")
 
         invoice_date = datetime.strptime(
             parsed_invoice["invoice_date"],
@@ -309,7 +326,9 @@ async def upload_invoice(
             match_result,
 
             "status":
-            final_status
+            final_status,
+            "ai_reason":
+            ai_reason
         })
 
     return {
