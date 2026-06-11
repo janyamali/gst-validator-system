@@ -10,8 +10,13 @@ print(
     bool(os.getenv("GEMINI_API_KEY"))
 )
 
+print(
+    "Gemini Key Found:",
+    bool(os.getenv("GEMINI_API_KEY"))
+)
+
 model = genai.GenerativeModel(
-    "gemini-1.5-flash"
+    "gemini-2.0-flash"
 )
 
 
