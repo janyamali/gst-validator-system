@@ -31,15 +31,10 @@ def find_claim_by_invoice_number(
 ):
 
     invoice_number = (
-
         str(invoice_number)
-
         .strip()
-
         .replace("-", "")
-
         .replace(" ", "")
-
         .upper()
     )
 
@@ -49,11 +44,44 @@ def find_claim_by_invoice_number(
     print("\nLOOKING FOR:")
     print(invoice_number)
 
+    # ---------------------------------
+    # Find invoice column automatically
+    # ---------------------------------
+
+    possible_columns = [
+
+        "invoice_number",
+
+        "invoice_no",
+
+        "bill_number",
+
+        "claim_voucher_no",
+
+        "voucher_no"
+    ]
+
+    search_column = None
+
+    for col in possible_columns:
+
+        if col in claims_df.columns:
+
+            search_column = col
+
+            break
+
+    if search_column is None:
+
+        raise Exception(
+            f"No invoice column found. Available columns: {claims_df.columns.tolist()}"
+        )
+
+    print(f"\nUSING COLUMN: {search_column}")
+
     match = claims_df[
 
-        claims_df[
-            "invoice_number"
-        ]
+        claims_df[search_column]
 
         .astype(str)
 
@@ -71,6 +99,8 @@ def find_claim_by_invoice_number(
     ]
 
     if len(match) == 0:
+
+        print("\nNO MATCH FOUND")
 
         return None
 
@@ -96,6 +126,14 @@ def normalize_claim(claim):
         or
 
         claim.get("bill_number")
+
+        or
+
+        claim.get("claim_voucher_no")
+
+        or
+
+        claim.get("voucher_no")
     )
 
     normalized["vendor_name"] = (
@@ -152,5 +190,8 @@ def normalize_claim(claim):
     )
 
     normalized["raw_data"] = claim
+
+    print("\nNORMALIZED CLAIM DATA:")
+    print(normalized)
 
     return normalized
