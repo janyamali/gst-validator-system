@@ -44,15 +44,29 @@ def normalize_ocr_text(text):
 
 def extract_gstin(text):
 
-    text = text.replace(
-        " ",
-        ""
-    )
+    seller_patterns = [
 
-    pattern = r'[0-9]{2}[A-Z0-9]{13}'
+        r"GST Registration No[:\s]*([0-9A-Z]{15})",
+
+        r"Seller GSTIN[:\s]*([0-9A-Z]{15})",
+
+        r"GSTIN[:\s]*([0-9A-Z]{15})"
+    ]
+
+    for pattern in seller_patterns:
+
+        match = re.search(
+            pattern,
+            text,
+            re.IGNORECASE
+        )
+
+        if match:
+
+            return match.group(1)
 
     matches = re.findall(
-        pattern,
+        r'[0-9]{2}[A-Z0-9]{13}',
         text
     )
 
@@ -141,6 +155,39 @@ def calculate_taxable_from_items(text):
 
 def extract_vendor_name(text):
 
+    # AMAZON / MARKETPLACE
+    sold_by_match = re.search(
+        r"Sold By\s*:?\s*\n?\s*([A-Z0-9 &.,()\-]+)",
+        text,
+        re.IGNORECASE
+    )
+
+    if sold_by_match:
+
+        vendor = sold_by_match.group(1).strip()
+
+        if vendor:
+
+            return vendor
+
+    # SWIGGY
+
+    restaurant_match = re.search(
+        r"Restaurant Name\s*:?\s*([^\n]+)",
+        text,
+        re.IGNORECASE
+    )
+
+    if restaurant_match:
+
+        vendor = restaurant_match.group(1).strip()
+
+        if vendor:
+
+            return vendor
+
+    # STANDARD INVOICE
+
     lines = [
 
         line.strip()
@@ -149,9 +196,6 @@ def extract_vendor_name(text):
 
         if line.strip()
     ]
-
-    # Pattern:
-    # "Synergy Electronics Invoice No. SY1211"
 
     for line in lines:
 
@@ -167,9 +211,32 @@ def extract_vendor_name(text):
 
                 return vendor
 
-    # Fallback
+    # FIRST NON-EMPTY LINE FALLBACK
 
-    return lines[0] if lines else "Unknown Vendor"
+    blacklist = [
+
+        "tax invoice",
+        "invoice",
+        "bill of supply",
+        "cash memo",
+        "subject to",
+        "gstin"
+    ]
+
+    for line in lines:
+
+        if not any(
+
+            bad in line.lower()
+
+            for bad in blacklist
+        ):
+
+            if len(line) > 3:
+
+                return line
+
+    return "Unknown Vendor"
 
 
 def extract_invoice_number(text):
@@ -238,6 +305,8 @@ def extract_invoice_date(text):
 
         r'(\d{2}/\d{2}/\d{4})',
 
+        r'(\d{2}-\d{2}-\d{4})',
+
         r'(\d{4}-\d{2}-\d{2})'
     ]
 
@@ -259,6 +328,13 @@ def extract_invoice_date(text):
                     return datetime.strptime(
                         date_str,
                         "%d/%m/%Y"
+                    ).strftime("%Y-%m-%d")
+
+                elif len(date_str) == 10 and date_str[2] == "-":
+
+                    return datetime.strptime(
+                        date_str,
+                        "%d-%m-%Y"
                     ).strftime("%Y-%m-%d")
 
                 return date_str
