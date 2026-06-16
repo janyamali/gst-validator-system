@@ -109,7 +109,7 @@ def extract_numeric_value_from_line(keyword, text):
             )
 
             numbers = re.findall(
-                r'\d+',
+                r'\d+(?:\.\d+)?',
                 line
             )
 
