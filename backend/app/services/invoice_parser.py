@@ -414,9 +414,14 @@ def auto_correct_amounts(
         total_amount
     )
 
-def extract_invoice_block(text, invoice_number):
+def extract_invoice_block(
+    text,
+    invoice_number
+):
 
-    sections = text.split("Sold By")
+    sections = text.split(
+        "Sold By"
+    )
 
     for section in sections:
 
@@ -444,20 +449,45 @@ def parse_invoice_data(raw_invoice: dict):
     print("\n========== CLEANED OCR TEXT ==========\n")
     print(cleaned_text)
 
-    gstin = extract_gstin(
-        cleaned_text
-    )
-
-    vendor_name = extract_vendor_name(
-        cleaned_text
-    )
+    # -----------------------------
+    # Extract Invoice Number First
+    # -----------------------------
 
     invoice_number = extract_invoice_number(
         cleaned_text
     )
 
+    # -----------------------------
+    # Extract Matching Invoice Block
+    # -----------------------------
+
+    invoice_block = extract_invoice_block(
+        cleaned_text,
+        invoice_number
+    )
+
+    print(
+        "\n========== INVOICE BLOCK ==========\n"
+    )
+
+    print(
+        invoice_block
+    )
+
+    # -----------------------------
+    # Extract fields ONLY from block
+    # -----------------------------
+
+    vendor_name = extract_vendor_name(
+        invoice_block
+    )
+
+    gstin = extract_gstin(
+        invoice_block
+    )
+
     claim_voucher_number = extract_claim_voucher_number(
-        cleaned_text
+        invoice_block
     )
 
     print(
@@ -466,26 +496,26 @@ def parse_invoice_data(raw_invoice: dict):
     )
 
     invoice_date = extract_invoice_date(
-        cleaned_text
+        invoice_block
     )
 
     taxable_amount = calculate_taxable_from_items(
-        cleaned_text
+        invoice_block
     )
 
     cgst = extract_numeric_value_from_line(
         "CGST",
-        cleaned_text
+        invoice_block
     )
 
     sgst = extract_numeric_value_from_line(
         "SGST",
-        cleaned_text
+        invoice_block
     )
 
     total_amount = extract_numeric_value_from_line(
         "TOTAL",
-        cleaned_text
+        invoice_block
     )
 
     if taxable_amount == 0 and total_amount > 0:
@@ -500,6 +530,66 @@ def parse_invoice_data(raw_invoice: dict):
         sgst,
         total_amount
     )
+
+    print("\n========== EXTRACTED VALUES ==========\n")
+
+    print("Vendor Name:", vendor_name)
+    print("GSTIN:", gstin)
+    print("Invoice Number:", invoice_number)
+    print("Invoice Date:", invoice_date)
+    print("Taxable Amount:", taxable_amount)
+    print("CGST:", cgst)
+    print("SGST:", sgst)
+    print("Total Amount:", total_amount)
+
+    print("\n======================================\n")
+
+    confidence = 0
+
+    if vendor_name and vendor_name != "Unknown Vendor":
+        confidence += 25
+
+    if gstin:
+        confidence += 25
+
+    if invoice_number and invoice_number != "INV-TEMP":
+        confidence += 25
+
+    if total_amount > 0:
+        confidence += 25
+
+    print(
+        f"\nPARSER CONFIDENCE: {confidence}%"
+    )
+
+    return {
+
+        "vendor_name": normalize_vendor_name(
+            vendor_name
+        ),
+
+        "gstin": gstin,
+
+        "invoice_number": normalize_invoice_number(
+            invoice_number
+        ),
+
+        "claim_voucher_number": claim_voucher_number,
+
+        "invoice_date": invoice_date,
+
+        "taxable_amount": taxable_amount,
+
+        "cgst": cgst,
+
+        "sgst": sgst,
+
+        "igst": 0,
+
+        "total_amount": total_amount,
+
+        "confidence": confidence
+    }
 
     print("\n========== EXTRACTED VALUES ==========\n")
 
