@@ -305,7 +305,7 @@ def extract_invoice_date(text):
 
         r'(\d{2}/\d{2}/\d{4})',
 
-        r'(\d{2}-\d{2}-\d{4})',
+        r'(\d{2}\.\d{2}\.\d{4})',
 
         r'(\d{4}-\d{2}-\d{2})'
     ]
@@ -330,19 +330,27 @@ def extract_invoice_date(text):
                         "%d/%m/%Y"
                     ).strftime("%Y-%m-%d")
 
-                elif len(date_str) == 10 and date_str[2] == "-":
+                elif "." in date_str:
 
                     return datetime.strptime(
                         date_str,
-                        "%d-%m-%Y"
+                        "%d.%m.%Y"
                     ).strftime("%Y-%m-%d")
 
-                return date_str
+                else:
 
-            except:
-                pass
+                    return date_str
 
-    return str(datetime.today().date())
+            except Exception as e:
+
+                print(
+                    "DATE PARSE ERROR:",
+                    e
+                )
+
+    return str(
+        datetime.today().date()
+    )
 
 def normalize_vendor_name(name: str):
 
@@ -494,6 +502,28 @@ def parse_invoice_data(raw_invoice: dict):
 
     print("\n======================================\n")
 
+    confidence = 0
+
+    if vendor_name and vendor_name != "Unknown Vendor":
+
+        confidence += 25
+
+    if gstin:
+
+        confidence += 25
+
+    if invoice_number and invoice_number != "INV-TEMP":
+
+        confidence += 25
+
+    if total_amount > 0:
+
+        confidence += 25
+
+    print(
+        f"\nPARSER CONFIDENCE: {confidence}%"
+    )
+
     return {
 
         "vendor_name": normalize_vendor_name(
@@ -518,5 +548,7 @@ def parse_invoice_data(raw_invoice: dict):
 
         "igst": 0,
 
-        "total_amount": total_amount
+        "total_amount": total_amount,
+
+        "confidence": confidence
     }
