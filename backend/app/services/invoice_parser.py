@@ -77,51 +77,53 @@ def extract_numeric_value_from_line(keyword, text):
 
     lines = text.splitlines()
 
-    keyword_aliases = {
-
-        "CGST": ["CGST", "C GST"],
-
-        "SGST": ["SGST", "S GST"],
-
-        "TOTAL": [
-            "Total Amount",
-            "Grand Total",
-            "Nettotal"
-        ]
-    }
-
-    search_terms = keyword_aliases.get(
-        keyword,
-        [keyword]
-    )
-
     for line in lines:
 
-        if any(
+        if keyword == "CGST":
 
-            term.lower() in line.lower()
+            if not re.search(
+                r"\bCGST\b",
+                line,
+                re.IGNORECASE
+            ):
+                continue
 
-            for term in search_terms
-        ):
+        elif keyword == "SGST":
 
-            print(
-                f"\nMATCHED LINE FOR {keyword}: {line}"
-            )
+            if not re.search(
+                r"\bSGST\b",
+                line,
+                re.IGNORECASE
+            ):
+                continue
 
-            numbers = re.findall(
-                r'\d+(?:\.\d+)?',
-                line
-            )
+        elif keyword == "TOTAL":
 
-            print(
-                f"NUMBERS FOUND: {numbers}"
-            )
+            if not any(
+                term.lower() in line.lower()
+                for term in [
+                    "Grand Total",
+                    "Total Amount",
+                    "Invoice Total"
+                ]
+            ):
+                continue
 
-            if numbers:
+        print(f"\nMATCHED LINE FOR {keyword}: {line}")
 
-                return float(
-                    numbers[-1]
-                )
+        numbers = re.findall(
+            r"\d+\.\d+|\d+",
+            line
+        )
+
+        print(f"NUMBERS FOUND: {numbers}")
+
+        if numbers:
+
+            try:
+                return float(numbers[-1])
+            except:
+                pass
 
     return 0
 
@@ -411,6 +413,18 @@ def auto_correct_amounts(
         sgst,
         total_amount
     )
+
+def extract_invoice_block(text, invoice_number):
+
+    sections = text.split("Sold By")
+
+    for section in sections:
+
+        if invoice_number in section:
+
+            return section
+
+    return text
 
 
 def parse_invoice_data(raw_invoice: dict):
