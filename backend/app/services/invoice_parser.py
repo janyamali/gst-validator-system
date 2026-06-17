@@ -155,39 +155,6 @@ def calculate_taxable_from_items(text):
 
 def extract_vendor_name(text):
 
-    # AMAZON / MARKETPLACE
-    sold_by_match = re.search(
-        r"Sold By\s*:?\s*\n?\s*([A-Z0-9 &.,()\-]+)",
-        text,
-        re.IGNORECASE
-    )
-
-    if sold_by_match:
-
-        vendor = sold_by_match.group(1).strip()
-
-        if vendor:
-
-            return vendor
-
-    # SWIGGY
-
-    restaurant_match = re.search(
-        r"Restaurant Name\s*:?\s*([^\n]+)",
-        text,
-        re.IGNORECASE
-    )
-
-    if restaurant_match:
-
-        vendor = restaurant_match.group(1).strip()
-
-        if vendor:
-
-            return vendor
-
-    # STANDARD INVOICE
-
     lines = [
 
         line.strip()
@@ -196,6 +163,43 @@ def extract_vendor_name(text):
 
         if line.strip()
     ]
+
+    # AMAZON STYLE
+    # Sold By:
+    # MIRADH ENTERPRISES
+
+    for i, line in enumerate(lines):
+
+        if "sold by" in line.lower():
+
+            if i + 1 < len(lines):
+
+                vendor = lines[i + 1].strip()
+
+                if len(vendor) > 2:
+
+                    return vendor
+
+    # AMAZON STYLE
+    # For ICC CHEMTEC PVT LTD
+
+    for line in lines:
+
+        if line.lower().startswith("for "):
+
+            vendor = (
+
+                line.replace("For", "")
+                .replace(":", "")
+                .strip()
+            )
+
+            if len(vendor) > 3:
+
+                return vendor
+
+    # EXISTING STYLE
+    # Synergy Electronics Invoice No ...
 
     for line in lines:
 
@@ -211,28 +215,21 @@ def extract_vendor_name(text):
 
                 return vendor
 
-    # FIRST NON-EMPTY LINE FALLBACK
-
     blacklist = [
 
         "tax invoice",
+        "billing address",
+        "shipping address",
         "invoice",
-        "bill of supply",
-        "cash memo",
-        "subject to",
-        "gstin"
+        "invoice details",
+        "invoice to"
     ]
 
-    for line in lines:
+    for line in lines[:10]:
 
-        if not any(
+        if line.lower() not in blacklist:
 
-            bad in line.lower()
-
-            for bad in blacklist
-        ):
-
-            if len(line) > 3:
+            if len(line) > 4:
 
                 return line
 
