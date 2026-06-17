@@ -238,32 +238,33 @@ def extract_vendor_name(text):
 
 def extract_invoice_number(text):
 
-    patterns = [
+    matches = re.findall(
 
-        r'Invoice\s+No[:\s]*([A-Z0-9\-]+)',
+        r'Invoice\s*Number\s*[:]\s*([A-Z0-9\-]+)',
 
-        r'Invoice\s+No\.?[:\s]*([A-Z0-9\-]+)',
+        text,
 
-        r'Invoice\s+Number[:\s]*([A-Z0-9\-]+)',
+        re.IGNORECASE
+    )
 
-        r'Invoice\s*#[:\s]*([A-Z0-9\-]+)'
-    ]
+    if matches:
 
-    for pattern in patterns:
+        # Ignore Amazon marketplace invoices
 
-        match = re.search(
-            pattern,
-            text,
-            re.IGNORECASE
-        )
+        filtered = [
 
-        if match:
+            m.upper()
 
-            return (
-                match.group(1)
-                .strip()
-                .upper()
-            )
+            for m in matches
+
+            if not m.upper().startswith("MKT")
+        ]
+
+        if filtered:
+
+            return filtered[-1]
+
+        return matches[-1].upper()
 
     return "INV-TEMP"
 
