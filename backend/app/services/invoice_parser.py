@@ -107,17 +107,24 @@ def extract_numeric_value_from_line(keyword, text):
 
 def extract_taxable_amount(text):
 
-    match = re.search(
-        r'(\d+\.\d+)\]\s*2\.5%\|CGST',
-        text,
-        re.IGNORECASE
+    matches = re.findall(
+        r'(\d+\.\d+)',
+        text
     )
 
-    if match:
+    candidates = []
 
-        return float(
-            match.group(1)
-        )
+    for value in matches:
+
+        num = float(value)
+
+        if 100 <= num <= 10000:
+
+            candidates.append(num)
+
+    if candidates:
+
+        return min(candidates)
 
     return 0
 
@@ -441,6 +448,59 @@ def extract_invoice_block(
 
     return text
 
+def extract_cgst(text):
+
+    match = re.search(
+        r'CGST\|\s*(\d+\.\d+)',
+        text,
+        re.IGNORECASE
+    )
+
+    if match:
+
+        return float(
+            match.group(1)
+        )
+
+    return 0
+
+def extract_sgst(text):
+
+    match = re.search(
+        r'SGST\|\s*(\d+\.\d+)',
+        text,
+        re.IGNORECASE
+    )
+
+    if match:
+
+        return float(
+            match.group(1)
+        )
+
+    return 0
+
+def extract_total_amount(text):
+
+    amounts = re.findall(
+        r'(\d+\.\d+)',
+        text
+    )
+
+    amounts = [
+
+        float(x)
+
+        for x in amounts
+
+        if float(x) > 200
+    ]
+
+    if amounts:
+
+        return max(amounts)
+
+    return 0
 
 def parse_invoice_data(raw_invoice: dict):
 
@@ -510,6 +570,15 @@ def parse_invoice_data(raw_invoice: dict):
         "Claim Voucher Number:",
         claim_voucher_number
     )
+    print("\nBEFORE AUTO CORRECT")
+
+    print("Taxable:", taxable_amount)
+
+    print("CGST:", cgst)
+
+    print("SGST:", sgst)
+
+    print("Total:", total_amount)
 
     invoice_date = extract_invoice_date(
         invoice_block
@@ -520,12 +589,10 @@ def parse_invoice_data(raw_invoice: dict):
     )
 
     cgst = extract_numeric_value_from_line(
-        "CGST",
         invoice_block
     )
 
     sgst = extract_numeric_value_from_line(
-        "SGST",
         invoice_block
     )
 
