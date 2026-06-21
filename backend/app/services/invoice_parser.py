@@ -482,11 +482,12 @@ def parse_invoice_data(raw_invoice: dict):
     )
 
     print(
-        "\n========== INVOICE BLOCK ==========\n"
+        "\n========== INVOICE BLOCK ==========\n",
+        len(invoice_block)
     )
 
     print(
-        invoice_block[:1000]
+        invoice_block
     )
 
     # -----------------------------
