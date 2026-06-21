@@ -519,22 +519,14 @@ def parse_invoice_data(raw_invoice: dict):
     print("\n========== CLEANED OCR TEXT ==========\n")
     print(cleaned_text)
 
-    # -----------------------------
-    # Extract Invoice Number First
-    # -----------------------------
-
     invoice_number = extract_invoice_number(
         cleaned_text
     )
 
     print(
-    "\nINVOICE NUMBER FOUND:",
-    invoice_number
+        "\nINVOICE NUMBER FOUND:",
+        invoice_number
     )
-
-    # -----------------------------
-    # Extract Matching Invoice Block
-    # -----------------------------
 
     invoice_block = extract_invoice_block(
         cleaned_text,
@@ -546,13 +538,7 @@ def parse_invoice_data(raw_invoice: dict):
         len(invoice_block)
     )
 
-    print(
-        invoice_block
-    )
-
-    # -----------------------------
-    # Extract fields ONLY from block
-    # -----------------------------
+    print(invoice_block)
 
     vendor_name = extract_vendor_name(
         invoice_block
@@ -570,35 +556,32 @@ def parse_invoice_data(raw_invoice: dict):
         "Claim Voucher Number:",
         claim_voucher_number
     )
-    print("\nBEFORE AUTO CORRECT")
-
-    print("Taxable:", taxable_amount)
-
-    print("CGST:", cgst)
-
-    print("SGST:", sgst)
-
-    print("Total:", total_amount)
 
     invoice_date = extract_invoice_date(
         invoice_block
     )
 
     taxable_amount = extract_taxable_amount(
-    invoice_block
-    )
-
-    cgst = extract_numeric_value_from_line(
         invoice_block
     )
 
-    sgst = extract_numeric_value_from_line(
+    cgst = extract_cgst(
+        invoice_block
+    )
+
+    sgst = extract_sgst(
         invoice_block
     )
 
     total_amount = extract_total_amount(
         invoice_block
     )
+
+    print("\nBEFORE AUTO CORRECT")
+    print("Taxable:", taxable_amount)
+    print("CGST:", cgst)
+    print("SGST:", sgst)
+    print("Total:", total_amount)
 
     if taxable_amount == 0 and total_amount > 0:
 
@@ -637,18 +620,10 @@ def parse_invoice_data(raw_invoice: dict):
     if invoice_number and invoice_number != "INV-TEMP":
         confidence += 25
 
-    if (
-        total_amount > 0
-        and
-        taxable_amount > 0
-    ):
+    if total_amount > 0 and taxable_amount > 0:
         confidence += 25
 
-    if (
-        cgst > 0
-        and
-        sgst > 0
-    ):
+    if cgst > 0 and sgst > 0:
         confidence += 25
 
     print(
