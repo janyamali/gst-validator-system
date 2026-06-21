@@ -415,22 +415,6 @@ def auto_correct_amounts(
         total_amount
     )
 
-def extract_total_amount(text):
-
-    match = re.search(
-        r'CGST\|?\s*\d+\.\d+\s*\|?\s*(\d+\.\d+)',
-        text,
-        re.IGNORECASE
-    )
-
-    if match:
-
-        return float(
-            match.group(1)
-        )
-
-    return 0
-
 def extract_invoice_block(
     text,
     invoice_number
@@ -458,9 +442,18 @@ def extract_cgst(text):
 
     if match:
 
-        return float(
+        value = float(
             match.group(1)
         )
+
+        if value > 20:
+
+            value = round(
+                value / 6,
+                2
+            )
+
+        return value
 
     return 0
 
@@ -474,9 +467,18 @@ def extract_sgst(text):
 
     if match:
 
-        return float(
+        value = float(
             match.group(1)
         )
+
+        if value > 20:
+
+            value = round(
+                value / 6,
+                2
+            )
+
+        return value
 
     return 0
 
@@ -625,6 +627,11 @@ def parse_invoice_data(raw_invoice: dict):
 
     if cgst > 0 and sgst > 0:
         confidence += 25
+
+    confidence = min(
+    confidence,
+    100
+    )
 
     print(
         f"\nPARSER CONFIDENCE: {confidence}%"
