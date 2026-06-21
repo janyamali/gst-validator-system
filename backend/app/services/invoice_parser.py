@@ -79,23 +79,21 @@ def extract_numeric_value_from_line(keyword, text):
 
     for line in lines:
 
-        if keyword == "CGST":
+        if keyword in ["CGST", "SGST"]:
 
-            if not re.search(
-                r"\bCGST\b",
-                line,
-                re.IGNORECASE
-            ):
-                continue
+            pattern = rf"{keyword}\W+(\d+\.\d+|\d+)"
 
-        elif keyword == "SGST":
+        match = re.search(
+            pattern,
+            line,
+            re.IGNORECASE
+        )
 
-            if not re.search(
-                r"\bSGST\b",
-                line,
-                re.IGNORECASE
-            ):
-                continue
+        if match:
+
+            return float(
+                match.group(1)
+            )
 
         elif keyword == "TOTAL":
 
@@ -124,6 +122,22 @@ def extract_numeric_value_from_line(keyword, text):
                 return float(numbers[-1])
             except:
                 pass
+
+    return 0
+
+def extract_taxable_amount(text):
+
+    match = re.search(
+        r'(\d+\.\d+).*?CGST',
+        text,
+        re.IGNORECASE
+    )
+
+    if match:
+
+        return float(
+            match.group(1)
+        )
 
     return 0
 
@@ -414,6 +428,21 @@ def auto_correct_amounts(
         total_amount
     )
 
+def extract_total_amount(text):
+
+    matches = re.findall(
+        r'(\d+\.\d+)',
+        text
+    )
+
+    if matches:
+
+        return float(
+            matches[-1]
+        )
+
+    return 0
+
 def extract_invoice_block(
     text,
     invoice_number
@@ -457,6 +486,11 @@ def parse_invoice_data(raw_invoice: dict):
         cleaned_text
     )
 
+    print(
+    "\nINVOICE NUMBER FOUND:",
+    invoice_number
+    )
+
     # -----------------------------
     # Extract Matching Invoice Block
     # -----------------------------
@@ -471,7 +505,7 @@ def parse_invoice_data(raw_invoice: dict):
     )
 
     print(
-        invoice_block
+        invoice_block[:1000]
     )
 
     # -----------------------------
@@ -499,8 +533,8 @@ def parse_invoice_data(raw_invoice: dict):
         invoice_block
     )
 
-    taxable_amount = calculate_taxable_from_items(
-        invoice_block
+    taxable_amount = extract_taxable_amount(
+    invoice_block
     )
 
     cgst = extract_numeric_value_from_line(
@@ -513,8 +547,7 @@ def parse_invoice_data(raw_invoice: dict):
         invoice_block
     )
 
-    total_amount = extract_numeric_value_from_line(
-        "TOTAL",
+    total_amount = extract_total_amount(
         invoice_block
     )
 
