@@ -75,17 +75,11 @@ def extract_gstin(text):
 
 def extract_numeric_value_from_line(keyword, text):
 
-    lines = text.splitlines()
-
-    for line in lines:
-
-        if keyword in ["CGST", "SGST"]:
-
-            pattern = rf"{keyword}\W+(\d+\.\d+|\d+)"
+    if keyword == "CGST":
 
         match = re.search(
-            pattern,
-            line,
+            r'CGST\|?\s*(\d+\.\d+)',
+            text,
             re.IGNORECASE
         )
 
@@ -95,40 +89,26 @@ def extract_numeric_value_from_line(keyword, text):
                 match.group(1)
             )
 
-        elif keyword == "TOTAL":
+    elif keyword == "SGST":
 
-            if not any(
-                term.lower() in line.lower()
-                for term in [
-                    "Grand Total",
-                    "Total Amount",
-                    "Invoice Total"
-                ]
-            ):
-                continue
-
-        print(f"\nMATCHED LINE FOR {keyword}: {line}")
-
-        numbers = re.findall(
-            r"\d+\.\d+|\d+",
-            line
+        match = re.search(
+            r'SGST\|?\s*(\d+\.\d+)',
+            text,
+            re.IGNORECASE
         )
 
-        print(f"NUMBERS FOUND: {numbers}")
+        if match:
 
-        if numbers:
-
-            try:
-                return float(numbers[-1])
-            except:
-                pass
+            return float(
+                match.group(1)
+            )
 
     return 0
 
 def extract_taxable_amount(text):
 
     match = re.search(
-        r'(\d+\.\d+).*?CGST',
+        r'(\d+\.\d+)\]\s*2\.5%\|CGST',
         text,
         re.IGNORECASE
     )
@@ -430,15 +410,16 @@ def auto_correct_amounts(
 
 def extract_total_amount(text):
 
-    matches = re.findall(
-        r'(\d+\.\d+)',
-        text
+    match = re.search(
+        r'CGST\|?\s*\d+\.\d+\s*\|?\s*(\d+\.\d+)',
+        text,
+        re.IGNORECASE
     )
 
-    if matches:
+    if match:
 
         return float(
-            matches[-1]
+            match.group(1)
         )
 
     return 0
@@ -588,7 +569,18 @@ def parse_invoice_data(raw_invoice: dict):
     if invoice_number and invoice_number != "INV-TEMP":
         confidence += 25
 
-    if total_amount > 0:
+    if (
+        total_amount > 0
+        and
+        taxable_amount > 0
+    ):
+        confidence += 25
+
+    if (
+        cgst > 0
+        and
+        sgst > 0
+    ):
         confidence += 25
 
     print(
@@ -624,66 +616,4 @@ def parse_invoice_data(raw_invoice: dict):
         "confidence": confidence
     }
 
-    print("\n========== EXTRACTED VALUES ==========\n")
-
-    print("Vendor Name:", vendor_name)
-    print("GSTIN:", gstin)
-    print("Invoice Number:", invoice_number)
-    print("Invoice Date:", invoice_date)
-    print("Taxable Amount:", taxable_amount)
-    print("CGST:", cgst)
-    print("SGST:", sgst)
-    print("Total Amount:", total_amount)
-
-    print("\n======================================\n")
-
-    confidence = 0
-
-    if vendor_name and vendor_name != "Unknown Vendor":
-
-        confidence += 25
-
-    if gstin:
-
-        confidence += 25
-
-    if invoice_number and invoice_number != "INV-TEMP":
-
-        confidence += 25
-
-    if total_amount > 0:
-
-        confidence += 25
-
-    print(
-        f"\nPARSER CONFIDENCE: {confidence}%"
-    )
-
-    return {
-
-        "vendor_name": normalize_vendor_name(
-            vendor_name
-        ),
-
-        "gstin": gstin,
-
-        "invoice_number": normalize_invoice_number(
-            invoice_number
-        ),
-
-        "claim_voucher_number": claim_voucher_number,
-
-        "invoice_date": invoice_date,
-
-        "taxable_amount": taxable_amount,
-
-        "cgst": cgst,
-
-        "sgst": sgst,
-
-        "igst": 0,
-
-        "total_amount": total_amount,
-
-        "confidence": confidence
-    }
+    
