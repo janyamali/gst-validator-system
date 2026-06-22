@@ -5,7 +5,7 @@ import os
 BASE_URL = os.getenv(
     "BACKEND_URL",
     "https://gst-validator-backend.onrender.com"
-)
+)   
 
 
 def get_invoices():
@@ -33,32 +33,39 @@ def export_excel():
 
 
 def upload_invoice(
-    invoice_pdf,
+    invoice_pdfs,
     claims_excel
 ):
 
     try:
 
-        files = {
+        files = []
 
-            "invoice_pdf": (
+        for pdf in invoice_pdfs:
 
-                invoice_pdf.name,
+            files.append(
 
-                invoice_pdf,
-
-                "application/pdf"
-            ),
-
-            "claims_excel": (
-
-                claims_excel.name,
-
-                claims_excel,
-
-                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                (
+                    "invoice_pdfs",
+                    (
+                        pdf.name,
+                        pdf.getvalue(),
+                        "application/pdf"
+                    )
+                )
             )
-        }
+
+        files.append(
+
+            (
+                "claims_excel",
+                (
+                    claims_excel.name,
+                    claims_excel.getvalue(),
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                )
+            )
+        )
 
         response = requests.post(
 
@@ -66,7 +73,7 @@ def upload_invoice(
 
             files=files,
 
-            timeout=120
+            timeout=300
         )
 
         response.raise_for_status()

@@ -13,10 +13,24 @@ claims_excel = st.file_uploader(
     type=["xlsx"]
 )
 
-invoice_pdf = st.file_uploader(
-    "Upload Invoice PDF",
-    type=["pdf"]
+invoice_pdfs = st.file_uploader(
+    "Upload Invoice PDFs",
+    type=["pdf"],
+    accept_multiple_files=True
 )
+
+if invoice_pdfs:
+
+    st.write(
+        f"Selected {len(invoice_pdfs)} PDFs"
+    )
+
+    for pdf in invoice_pdfs:
+
+        st.write(
+            "📄",
+            pdf.name
+        )
 
 if st.button(
     "Validate Invoice"
@@ -28,10 +42,10 @@ if st.button(
             "Upload claims Excel."
         )
 
-    elif not invoice_pdf:
+    elif not invoice_pdfs:
 
         st.error(
-            "Upload invoice PDF."
+            "Upload at least one invoice PDF."
         )
 
     else:
@@ -41,7 +55,7 @@ if st.button(
         ):
 
             result = upload_invoice(
-                invoice_pdf,
+                invoice_pdfs,
                 claims_excel
             )
 

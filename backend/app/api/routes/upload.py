@@ -5,6 +5,8 @@ from fastapi import Depends
 
 from sqlalchemy.orm import Session
 
+from typing import List
+
 from datetime import datetime
 
 from app.core.database import get_db
@@ -24,6 +26,10 @@ from app.services.matcher import match_claim_with_invoice
 
 from app.services.ai_reasoning import generate_reason
 
+from app.services.ai_extractor import (
+    extract_invoice_with_ai
+)
+
 from app.services.excel_parser import (
     load_claims_excel,
     find_claim_by_invoice_number
@@ -38,14 +44,13 @@ router = APIRouter(
 @router.post("/")
 async def upload_invoice(
 
-    invoice_pdf: UploadFile = File(...),
+    invoice_pdfs: List[UploadFile] = File(...),
 
     claims_excel: UploadFile = File(...),
 
     db: Session = Depends(get_db)
-):
 
-    pdf_content = await invoice_pdf.read()
+):
 
     excel_content = await claims_excel.read()
 
@@ -53,23 +58,23 @@ async def upload_invoice(
         excel_content
     )
 
-    raw_invoices = analyze_invoice(
-        pdf_content
-    )
-
     processed_invoices = []
 
-    for invoice in raw_invoices:
+    for invoice_pdf in invoice_pdfs:
+
+        pdf_content = await invoice_pdf.read()
+
+        raw_invoice = analyze_invoice(
+            pdf_content
+        )
 
         parsed_invoice = parse_invoice_data(
-            invoice
+            raw_invoice
         )
 
         claim_data = find_claim_by_invoice_number(
 
-            parsed_invoice[
-                "invoice_number"
-            ],
+            parsed_invoice["invoice_number"],
 
             claims_df
         )
@@ -85,9 +90,8 @@ async def upload_invoice(
                 "Invoice Number not found in Excel",
 
                 "invoice_number":
-                parsed_invoice[
-                    "invoice_number"
-                ]
+                parsed_invoice["invoice_number"]
+
             })
 
             continue
@@ -97,11 +101,13 @@ async def upload_invoice(
             db,
 
             parsed_invoice
+
         )
 
         validation_result = validate_invoice(
 
             parsed_invoice
+
         )
 
         match_result = match_claim_with_invoice(
@@ -109,6 +115,7 @@ async def upload_invoice(
             claim_data,
 
             parsed_invoice
+
         )
 
         final_status = (
@@ -117,15 +124,11 @@ async def upload_invoice(
 
             if (
 
-                validation_result[
-                    "overall_valid"
-                ]
+                validation_result["overall_valid"]
 
                 and
 
-                match_result[
-                    "overall_match"
-                ]
+                match_result["overall_match"]
 
                 and
 
@@ -147,6 +150,7 @@ async def upload_invoice(
             duplicate_detected,
 
             final_status
+
         )
 
         print("\n========== AI REASON ==========")
@@ -154,72 +158,54 @@ async def upload_invoice(
         print("===============================")
 
         invoice_date = datetime.strptime(
+
             parsed_invoice["invoice_date"],
+
             "%Y-%m-%d"
+
         ).date()
 
         invoice_record = Invoice(
 
             claim_voucher_number=
-            parsed_invoice[
-                "claim_voucher_number"
-            ],
+            parsed_invoice["claim_voucher_number"],
 
             vendor_name=
-            parsed_invoice[
-                "vendor_name"
-            ],
+            parsed_invoice["vendor_name"],
 
             gstin=
-            parsed_invoice[
-                "gstin"
-            ],
+            parsed_invoice["gstin"],
 
             invoice_number=
-            parsed_invoice[
-                "invoice_number"
-            ],
+            parsed_invoice["invoice_number"],
 
             invoice_date=
             invoice_date,
 
             taxable_amount=
-            parsed_invoice[
-                "taxable_amount"
-            ],
+            parsed_invoice["taxable_amount"],
 
             cgst=
-            parsed_invoice[
-                "cgst"
-            ],
+            parsed_invoice["cgst"],
 
             sgst=
-            parsed_invoice[
-                "sgst"
-            ],
+            parsed_invoice["sgst"],
 
             igst=
-            parsed_invoice[
-                "igst"
-            ],
+            parsed_invoice["igst"],
 
             total_amount=
-            parsed_invoice[
-                "total_amount"
-            ],
+            parsed_invoice["total_amount"],
 
             claimed_amount=
-            claim_data[
-                "claimed_amount"
-            ],
+            claim_data["claimed_amount"],
 
             claimed_gst=
-            claim_data[
-                "claimed_gst"
-            ],
+            claim_data["claimed_gst"],
 
             validation_status=
             final_status
+
         )
 
         db.add(invoice_record)
@@ -241,21 +227,16 @@ async def upload_invoice(
 
             validated_gst=(
 
-                parsed_invoice[
-                    "cgst"
-                ]
+                parsed_invoice["cgst"]
 
                 +
 
-                parsed_invoice[
-                    "sgst"
-                ]
+                parsed_invoice["sgst"]
 
                 +
 
-                parsed_invoice[
-                    "igst"
-                ]
+                parsed_invoice["igst"]
+
             ),
 
             mismatch_amount=
@@ -284,24 +265,17 @@ async def upload_invoice(
             voucher_match=False,
 
             vendor_match=
-            match_result[
-                "vendor_match"
-            ],
+            match_result["vendor_match"],
 
             invoice_match=
-            match_result[
-                "invoice_number_match"
-            ],
+            match_result["invoice_number_match"],
 
             amount_match=
-            match_result[
-                "amount_match"
-            ],
+            match_result["amount_match"],
 
             gst_match=
-            match_result[
-                "gst_match"
-            ]
+            match_result["gst_match"]
+
         )
 
         db.add(validation_record)
@@ -327,13 +301,18 @@ async def upload_invoice(
 
             "status":
             final_status,
+
             "ai_reason":
             ai_reason
+
         })
 
     return {
 
         "success": True,
 
+        "count": len(processed_invoices),
+
         "data": processed_invoices
+
     }
