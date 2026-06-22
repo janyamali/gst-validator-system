@@ -70,6 +70,9 @@ async def upload_invoice(
             pdf_content
         )
 
+        print(type(raw_invoice))
+        print(raw_invoice)
+
         parsed_invoice = parse_invoice_data(
             raw_invoice
         )

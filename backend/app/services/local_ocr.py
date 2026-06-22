@@ -81,8 +81,6 @@ def analyze_invoice(file_bytes):
 
     print(extracted_text)
 
-    return [
-        {
-            "raw_text": extracted_text
-        }
-    ]
+    return {
+        "raw_text": extracted_text
+    }
