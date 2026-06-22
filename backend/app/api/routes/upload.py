@@ -7,6 +7,8 @@ from sqlalchemy.orm import Session
 
 from typing import List
 
+from fastapi import UploadFile, File
+
 from datetime import datetime
 
 from app.core.database import get_db
