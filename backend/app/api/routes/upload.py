@@ -1,14 +1,6 @@
-from fastapi import APIRouter
-from fastapi import UploadFile
-from fastapi import File
-from fastapi import Depends
-
+from fastapi import APIRouter, UploadFile, File, Depends
 from sqlalchemy.orm import Session
-
 from typing import List
-
-from fastapi import UploadFile, File
-
 from datetime import datetime
 
 from app.core.database import get_db
@@ -17,20 +9,11 @@ from app.models.invoice import Invoice
 from app.models.validation import Validation
 
 from app.services.local_ocr import analyze_invoice
-
 from app.services.invoice_parser import parse_invoice_data
-
 from app.services.gst_validator import validate_invoice
-
 from app.services.duplicate_detector import detect_duplicate
-
 from app.services.matcher import match_claim_with_invoice
-
 from app.services.ai_reasoning import generate_reason
-
-from app.services.ai_extractor import (
-    extract_invoice_with_ai
-)
 
 from app.services.excel_parser import (
     load_claims_excel,
@@ -45,6 +28,13 @@ router = APIRouter(
 
 @router.post("/")
 async def upload_invoice(
+
+    print("=" * 80)
+    print(f"TOTAL PDFs RECEIVED: {len(invoice_pdfs)}")
+    print("=" * 80)
+
+    for pdf in invoice_pdfs:
+    print(pdf.filename)
 
     invoice_pdfs: List[UploadFile] = File(...),
 
@@ -62,255 +52,307 @@ async def upload_invoice(
 
     processed_invoices = []
 
-    for invoice_pdf in invoice_pdfs:
+    print("\n" + "=" * 80)
+    print(f"TOTAL PDFs RECEIVED : {len(invoice_pdfs)}")
+    print("=" * 80)
 
-        pdf_content = await invoice_pdf.read()
+    for index, invoice_pdf in enumerate(invoice_pdfs, start=1):
 
-        raw_invoice = analyze_invoice(
-            pdf_content
-        )
+        print("\n" + "=" * 80)
+        print(f"PROCESSING PDF {index}/{len(invoice_pdfs)}")
+        print(f"FILE NAME : {invoice_pdf.filename}")
+        print("=" * 80)
 
-        print(type(raw_invoice))
-        print(raw_invoice)
+        try:
 
-        parsed_invoice = parse_invoice_data(
-            raw_invoice
-        )
+            pdf_content = await invoice_pdf.read()
 
-        claim_data = find_claim_by_invoice_number(
+            raw_invoice = analyze_invoice(
+                pdf_content
+            )
 
-            parsed_invoice["invoice_number"],
+            print("\nOCR RETURN TYPE:")
+            print(type(raw_invoice))
 
-            claims_df
-        )
+            if isinstance(raw_invoice, dict):
 
-        print("\nNORMALIZED CLAIM DATA:")
-        print(claim_data)
+                print(raw_invoice.keys())
 
-        if claim_data is None:
+            else:
 
-            processed_invoices.append({
+                print(raw_invoice)
 
-                "error":
-                "Invoice Number not found in Excel",
+            parsed_invoice = parse_invoice_data(
+                raw_invoice
+            )
 
-                "invoice_number":
-                parsed_invoice["invoice_number"]
+            claim_data = find_claim_by_invoice_number(
 
-            })
+                parsed_invoice["invoice_number"],
 
-            continue
-
-        duplicate_detected = detect_duplicate(
-
-            db,
-
-            parsed_invoice
-
-        )
-
-        validation_result = validate_invoice(
-
-            parsed_invoice
-
-        )
-
-        match_result = match_claim_with_invoice(
-
-            claim_data,
-
-            parsed_invoice
-
-        )
-
-        final_status = (
-
-            "VALID"
-
-            if (
-
-                validation_result["overall_valid"]
-
-                and
-
-                match_result["overall_match"]
-
-                and
-
-                not duplicate_detected
+                claims_df
 
             )
 
-            else
+            print("\nNORMALIZED CLAIM DATA:")
+            print(claim_data)
 
-            "INVALID"
-        )
+            if claim_data is None:
 
-        ai_reason = generate_reason(
+                processed_invoices.append({
 
-            validation_result,
+                    "file": invoice_pdf.filename,
 
-            match_result,
+                    "error":
+                    "Invoice Number not found in Excel",
 
-            duplicate_detected,
+                    "invoice_number":
+                    parsed_invoice["invoice_number"]
 
-            final_status
+                })
 
-        )
+                continue
 
-        print("\n========== AI REASON ==========")
-        print(ai_reason)
-        print("===============================")
+            duplicate_detected = detect_duplicate(
 
-        invoice_date = datetime.strptime(
+                db,
 
-            parsed_invoice["invoice_date"],
+                parsed_invoice
 
-            "%Y-%m-%d"
+            )
 
-        ).date()
+            validation_result = validate_invoice(
 
-        invoice_record = Invoice(
+                parsed_invoice
 
-            claim_voucher_number=
-            parsed_invoice["claim_voucher_number"],
+            )
 
-            vendor_name=
-            parsed_invoice["vendor_name"],
+            match_result = match_claim_with_invoice(
 
-            gstin=
-            parsed_invoice["gstin"],
+                claim_data,
 
-            invoice_number=
-            parsed_invoice["invoice_number"],
+                parsed_invoice
 
-            invoice_date=
-            invoice_date,
+            )
 
-            taxable_amount=
-            parsed_invoice["taxable_amount"],
+            final_status = (
 
-            cgst=
-            parsed_invoice["cgst"],
+                "VALID"
 
-            sgst=
-            parsed_invoice["sgst"],
+                if (
 
-            igst=
-            parsed_invoice["igst"],
+                    validation_result["overall_valid"]
 
-            total_amount=
-            parsed_invoice["total_amount"],
+                    and
 
-            claimed_amount=
-            claim_data["claimed_amount"],
+                    match_result["overall_match"]
 
-            claimed_gst=
-            claim_data["claimed_gst"],
+                    and
 
-            validation_status=
-            final_status
+                    not duplicate_detected
 
-        )
-
-        db.add(invoice_record)
-
-        db.commit()
-
-        db.refresh(invoice_record)
-
-        validation_record = Validation(
-
-            invoice_id=
-            invoice_record.id,
-
-            status=
-            final_status,
-
-            remarks=
-            "Validation Completed",
-
-            validated_gst=(
-
-                parsed_invoice["cgst"]
-
-                +
-
-                parsed_invoice["sgst"]
-
-                +
-
-                parsed_invoice["igst"]
-
-            ),
-
-            mismatch_amount=
-            abs(
-
-                float(
-                    claim_data.get(
-                        "claimed_amount",
-                        0
-                    )
                 )
 
-                -
+                else
 
-                float(
-                    parsed_invoice.get(
-                        "total_amount",
-                        0
+                "INVALID"
+
+            )
+
+            ai_reason = generate_reason(
+
+                validation_result,
+
+                match_result,
+
+                duplicate_detected,
+
+                final_status
+
+            )
+
+            print("\n========== AI REASON ==========")
+            print(ai_reason)
+            print("===============================")
+
+            invoice_date = datetime.strptime(
+
+                parsed_invoice["invoice_date"],
+
+                "%Y-%m-%d"
+
+            ).date()
+
+            invoice_record = Invoice(
+
+                claim_voucher_number=
+                parsed_invoice["claim_voucher_number"],
+
+                vendor_name=
+                parsed_invoice["vendor_name"],
+
+                gstin=
+                parsed_invoice["gstin"],
+
+                invoice_number=
+                parsed_invoice["invoice_number"],
+
+                invoice_date=
+                invoice_date,
+
+                taxable_amount=
+                parsed_invoice["taxable_amount"],
+
+                cgst=
+                parsed_invoice["cgst"],
+
+                sgst=
+                parsed_invoice["sgst"],
+
+                igst=
+                parsed_invoice["igst"],
+
+                total_amount=
+                parsed_invoice["total_amount"],
+
+                claimed_amount=
+                claim_data["claimed_amount"],
+
+                claimed_gst=
+                claim_data["claimed_gst"],
+
+                validation_status=
+                final_status
+
+            )
+
+            db.add(invoice_record)
+
+            db.commit()
+
+            db.refresh(invoice_record)
+
+            validation_record = Validation(
+
+                invoice_id=
+                invoice_record.id,
+
+                status=
+                final_status,
+
+                remarks=
+                "Validation Completed",
+
+                validated_gst=(
+
+                    parsed_invoice["cgst"]
+
+                    +
+
+                    parsed_invoice["sgst"]
+
+                    +
+
+                    parsed_invoice["igst"]
+
+                ),
+
+                mismatch_amount=
+
+                abs(
+
+                    float(
+
+                        claim_data.get(
+                            "claimed_amount",
+                            0
+                        )
+
                     )
-                )
-            ),
 
-            duplicate_detected=
-            duplicate_detected,
+                    -
 
-            voucher_match=False,
+                    float(
 
-            vendor_match=
-            match_result["vendor_match"],
+                        parsed_invoice.get(
+                            "total_amount",
+                            0
+                        )
 
-            invoice_match=
-            match_result["invoice_number_match"],
+                    )
 
-            amount_match=
-            match_result["amount_match"],
+                ),
 
-            gst_match=
-            match_result["gst_match"]
+                duplicate_detected=
+                duplicate_detected,
 
-        )
+                voucher_match=False,
 
-        db.add(validation_record)
+                vendor_match=
+                match_result["vendor_match"],
 
-        db.commit()
+                invoice_match=
+                match_result["invoice_number_match"],
 
-        processed_invoices.append({
+                amount_match=
+                match_result["amount_match"],
 
-            "claim_data":
-            claim_data,
+                gst_match=
+                match_result["gst_match"]
 
-            "parsed_invoice":
-            parsed_invoice,
+            )
 
-            "validation":
-            validation_result,
+            db.add(validation_record)
 
-            "duplicate_detected":
-            duplicate_detected,
+            db.commit()
 
-            "claim_match":
-            match_result,
+            processed_invoices.append({
 
-            "status":
-            final_status,
+                "file":
+                invoice_pdf.filename,
 
-            "ai_reason":
-            ai_reason
+                "claim_data":
+                claim_data,
 
-        })
+                "parsed_invoice":
+                parsed_invoice,
+
+                "validation":
+                validation_result,
+
+                "duplicate_detected":
+                duplicate_detected,
+
+                "claim_match":
+                match_result,
+
+                "status":
+                final_status,
+
+                "ai_reason":
+                ai_reason
+
+            })
+
+        except Exception as e:
+
+            print("\nERROR PROCESSING PDF:")
+            print(invoice_pdf.filename)
+            print(str(e))
+
+            processed_invoices.append({
+
+                "file":
+                invoice_pdf.filename,
+
+                "error":
+                str(e)
+
+            })
+
+    print("\n" + "=" * 80)
+    print(f"TOTAL RESULTS RETURNED : {len(processed_invoices)}")
+    print("=" * 80)
 
     return {
 
