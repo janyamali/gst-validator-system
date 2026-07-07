@@ -29,13 +29,6 @@ router = APIRouter(
 @router.post("/")
 async def upload_invoice(
 
-    print("=" * 80)
-    print(f"TOTAL PDFs RECEIVED: {len(invoice_pdfs)}")
-    print("=" * 80)
-
-    for pdf in invoice_pdfs:
-    print(pdf.filename)
-
     invoice_pdfs: List[UploadFile] = File(...),
 
     claims_excel: UploadFile = File(...),
@@ -44,6 +37,13 @@ async def upload_invoice(
 
 ):
 
+    print("\n" + "=" * 80)
+    print(f"TOTAL PDFs RECEIVED: {len(invoice_pdfs)}")
+    print("=" * 80)
+
+    for pdf in invoice_pdfs:
+        print(f"PDF RECEIVED: {pdf.filename}")
+
     excel_content = await claims_excel.read()
 
     claims_df = load_claims_excel(
@@ -51,10 +51,6 @@ async def upload_invoice(
     )
 
     processed_invoices = []
-
-    print("\n" + "=" * 80)
-    print(f"TOTAL PDFs RECEIVED : {len(invoice_pdfs)}")
-    print("=" * 80)
 
     for index, invoice_pdf in enumerate(invoice_pdfs, start=1):
 
