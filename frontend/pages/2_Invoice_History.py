@@ -25,22 +25,28 @@ else:
 
     df = pd.DataFrame(data)
 
-    st.dataframe(
+    if df.empty:
 
-        df[[
-            "claim_voucher_number",
-            "vendor_name",
-            "invoice_number",
-            "gstin",
-            "taxable_amount",
-            "cgst",
-            "sgst",
-            "igst",
-            "total_amount",
-            "claimed_amount",
-            "claimed_gst",
-            "validation_status"
-        ]],
+        st.info("No invoices found.")
 
-        use_container_width=True
-    )
+    else:
+
+        st.dataframe(
+
+            df[[
+                "claim_voucher_number",
+                "vendor_name",
+                "invoice_number",
+                "gstin",
+                "taxable_amount",
+                "cgst",
+                "sgst",
+                "igst",
+                "total_amount",
+                "claimed_amount",
+                "claimed_gst",
+                "validation_status"
+            ]],
+
+            use_container_width=True
+        )
