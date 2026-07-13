@@ -44,34 +44,27 @@ def normalize_ocr_text(text):
 
 def extract_gstin(text):
 
-    seller_patterns = [
+    gstin_pattern = r"\b\d{2}[A-Z]{5}\d{4}[A-Z][1-9A-Z]Z[A-Z0-9]\b"
 
-        r"GST Registration No[:\s]*([0-9A-Z]{15})",
+    match = re.search(
 
-        r"Seller GSTIN[:\s]*([0-9A-Z]{15})",
+        gstin_pattern,
 
-        r"GSTIN[:\s]*([0-9A-Z]{15})"
-    ]
+        text,
 
-    for pattern in seller_patterns:
+        re.IGNORECASE
 
-        match = re.search(
-            pattern,
-            text,
-            re.IGNORECASE
-        )
-
-        if match:
-
-            return match.group(1)
-
-    matches = re.findall(
-        r'[0-9]{2}[A-Z0-9]{13}',
-        text
     )
 
-    return matches[0] if matches else None
+    if match:
 
+        gstin = match.group()
+
+        gstin = gstin.upper()
+
+        return gstin
+
+    return None
 
 def extract_numeric_value_from_line(keyword, text):
 
@@ -158,119 +151,88 @@ def calculate_taxable_from_items(text):
 
 def extract_vendor_name(text):
 
-    lines = [
+    patterns = [
 
-        line.strip()
+        r"Sold By\s*:?\s*(.+)",
 
-        for line in text.splitlines()
+        r"Supplier\s*:?\s*(.+)",
 
-        if line.strip()
+        r"Supplier Name\s*:?\s*(.+)",
+
+        r"Vendor\s*:?\s*(.+)",
+
+        r"Legal Name\s*:?\s*(.+)",
+
+        r"Issued By\s*:?\s*(.+)",
+
     ]
 
-    # AMAZON STYLE
-    # Sold By:
-    # MIRADH ENTERPRISES
+    for pattern in patterns:
 
-    for i, line in enumerate(lines):
+        match = re.search(
+            pattern,
+            text,
+            re.IGNORECASE
+        )
 
-        if "sold by" in line.lower():
+        if match:
 
-            if i + 1 < len(lines):
+            vendor = match.group(1)
 
-                vendor = lines[i + 1].strip()
+            vendor = vendor.split("\n")[0]
 
-                if len(vendor) > 2:
-
-                    return vendor
-
-    # AMAZON STYLE
-    # For ICC CHEMTEC PVT LTD
-
-    for line in lines:
-
-        if line.lower().startswith("for "):
-
-            vendor = (
-
-                line.replace("For", "")
-                .replace(":", "")
-                .strip()
-            )
+            vendor = vendor.strip()
 
             if len(vendor) > 3:
 
                 return vendor
 
-    # EXISTING STYLE
-    # Synergy Electronics Invoice No ...
-
-    for line in lines:
-
-        if "invoice no" in line.lower():
-
-            vendor = re.split(
-                r'Invoice\s+No',
-                line,
-                flags=re.IGNORECASE
-            )[0].strip()
-
-            if vendor:
-
-                return vendor
-
-    blacklist = [
-
-        "tax invoice",
-        "billing address",
-        "shipping address",
-        "invoice",
-        "invoice details",
-        "invoice to"
-    ]
-
-    for line in lines[:10]:
-
-        if line.lower() not in blacklist:
-
-            if len(line) > 4:
-
-                return line
-
     return "Unknown Vendor"
 
+import re
 
 def extract_invoice_number(text):
 
-    matches = re.findall(
+    patterns = [
 
-        r'Invoice\s*Number\s*[:]\s*([A-Z0-9\-]+)',
+        r'Invoice\s*Number\s*[:\-]?\s*([A-Z0-9\/\-]+)',
+        r'Invoice\s*No\.?\s*[:\-]?\s*([A-Z0-9\/\-]+)',
+        r'Invoice\s*#\s*[:\-]?\s*([A-Z0-9\/\-]+)',
 
-        text,
+        r'Tax\s*Invoice\s*No\.?\s*[:\-]?\s*([A-Z0-9\/\-]+)',
 
-        re.IGNORECASE
-    )
+        r'Document\s*No\.?\s*[:\-]?\s*([A-Z0-9\/\-]+)',
+        r'Document\s*Number\s*[:\-]?\s*([A-Z0-9\/\-]+)',
 
-    if matches:
+        r'Doc\s*No\.?\s*[:\-]?\s*([A-Z0-9\/\-]+)',
 
-        # Ignore Amazon marketplace invoices
+        r'Bill\s*No\.?\s*[:\-]?\s*([A-Z0-9\/\-]+)',
 
-        filtered = [
+        r'Reference\s*No\.?\s*[:\-]?\s*([A-Z0-9\/\-]+)',
 
-            m.upper()
+        r'Ref\s*No\.?\s*[:\-]?\s*([A-Z0-9\/\-]+)',
 
-            for m in matches
+    ]
 
-            if not m.upper().startswith("MKT")
-        ]
+    for pattern in patterns:
 
-        if filtered:
+        match = re.search(
+            pattern,
+            text,
+            re.IGNORECASE
+        )
 
-            return filtered[-1]
+        if match:
 
-        return matches[-1].upper()
+            invoice = match.group(1)
+
+            invoice = invoice.strip()
+
+            invoice = invoice.replace(" ", "")
+
+            return invoice
 
     return "INV-TEMP"
-
 
 def extract_claim_voucher_number(text):
 
@@ -304,54 +266,37 @@ def extract_invoice_date(text):
 
     patterns = [
 
-        r'(\d{2}/\d{2}/\d{4})',
+        r'Invoice\s*Date\s*[:\-]?\s*(\d{2}[./-]\d{2}[./-]\d{4})',
 
-        r'(\d{2}\.\d{2}\.\d{4})',
+        r'Document\s*Date\s*[:\-]?\s*(\d{2}[./-]\d{2}[./-]\d{4})',
 
-        r'(\d{4}-\d{2}-\d{2})'
+        r'Bill\s*Date\s*[:\-]?\s*(\d{2}[./-]\d{2}[./-]\d{4})',
+
+        r'(\d{2}[./-]\d{2}[./-]\d{4})',
+
     ]
 
     for pattern in patterns:
 
         match = re.search(
             pattern,
-            text
+            text,
+            re.IGNORECASE
         )
 
         if match:
 
-            date_str = match.group(1)
+            date = match.group(1)
 
-            try:
+            date = date.replace(".", "-")
 
-                if "/" in date_str:
+            date = date.replace("/", "-")
 
-                    return datetime.strptime(
-                        date_str,
-                        "%d/%m/%Y"
-                    ).strftime("%Y-%m-%d")
+            day, month, year = date.split("-")
 
-                elif "." in date_str:
+            return f"{year}-{month}-{day}"
 
-                    return datetime.strptime(
-                        date_str,
-                        "%d.%m.%Y"
-                    ).strftime("%Y-%m-%d")
-
-                else:
-
-                    return date_str
-
-            except Exception as e:
-
-                print(
-                    "DATE PARSE ERROR:",
-                    e
-                )
-
-    return str(
-        datetime.today().date()
-    )
+    return None
 
 def normalize_vendor_name(name: str):
 
@@ -420,17 +365,43 @@ def extract_invoice_block(
     invoice_number
 ):
 
-    sections = text.split(
-        "Sold By"
+    if invoice_number == "INV-TEMP":
+
+        return text
+
+    start = text.find(invoice_number)
+
+    if start == -1:
+
+        return text
+
+    previous = text.rfind(
+        "Sold By",
+        0,
+        start
     )
 
-    for section in sections:
+    if previous == -1:
 
-        if invoice_number in section:
+        previous = max(
+            0,
+            start - 400
+        )
 
-            return section
+    next_invoice = text.find(
+        "Sold By",
+        start + len(invoice_number)
+    )
 
-    return text
+    if next_invoice == -1:
+
+        next_invoice = len(text)
+
+    block = text[
+        previous:next_invoice
+    ]
+
+    return block
 
 def extract_cgst(text):
 
