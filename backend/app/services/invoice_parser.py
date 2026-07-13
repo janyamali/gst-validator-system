@@ -486,11 +486,13 @@ def parse_invoice_data(raw_invoice: dict):
         text
     )
 
-    print("\n========== RAW OCR TEXT ==========\n")
-    print(text)
 
-    print("\n========== CLEANED OCR TEXT ==========\n")
-    print(cleaned_text)
+    print(f"Raw OCR Length: {len(text)}")
+    print(text[:500])
+
+    
+    print(f"Cleaned OCR Length: {len(cleaned_text)}")
+    print(cleaned_text[:500])
 
     invoice_number = extract_invoice_number(
         cleaned_text
@@ -511,7 +513,8 @@ def parse_invoice_data(raw_invoice: dict):
         len(invoice_block)
     )
 
-    print(invoice_block)
+    print(f"Invoice Block Length: {len(invoice_block)}")
+    print(invoice_block[:700])
 
     vendor_name = extract_vendor_name(
         invoice_block

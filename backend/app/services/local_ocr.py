@@ -1,14 +1,11 @@
-import pytesseract
-
-import fitz
-
-from PIL import Image
-
+import gc
 import io
 
 import cv2
-
+import fitz
 import numpy as np
+import pytesseract
+from PIL import Image
 
 
 def preprocess_image(image):
@@ -27,15 +24,7 @@ def preprocess_image(image):
         cv2.THRESH_BINARY
     )[1]
 
-    enlarged = cv2.resize(
-        threshold,
-        None,
-        fx=2,
-        fy=2,
-        interpolation=cv2.INTER_CUBIC
-    )
-
-    return enlarged
+    return threshold
 
 
 def extract_text_from_pdf(file_bytes):
@@ -49,7 +38,9 @@ def extract_text_from_pdf(file_bytes):
 
     for page in pdf_document:
 
-        pix = page.get_pixmap(matrix=fitz.Matrix(3, 3))
+        pix = page.get_pixmap(
+            matrix=fitz.Matrix(2, 2)
+        )
 
         img_bytes = pix.tobytes("png")
 
@@ -63,10 +54,20 @@ def extract_text_from_pdf(file_bytes):
 
         page_text = pytesseract.image_to_string(
             processed_image,
-            config='--psm 6'
+            config="--psm 6"
         )
 
         text += page_text + "\n"
+
+        # Free memory immediately
+        del pix
+        del img_bytes
+        del image
+        del processed_image
+
+        gc.collect()
+
+    pdf_document.close()
 
     return text
 
@@ -77,9 +78,11 @@ def analyze_invoice(file_bytes):
         file_bytes
     )
 
-    print("\n========== OCR TEXT ==========\n")
-
-    print(extracted_text)
+    print("\n========== OCR SUMMARY ==========")
+    print(f"Characters extracted: {len(extracted_text)}")
+    print("\nPreview:\n")
+    print(extracted_text[:500])
+    print("\n=================================")
 
     return {
         "raw_text": extracted_text
