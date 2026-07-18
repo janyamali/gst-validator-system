@@ -66,52 +66,196 @@ def extract_gstin(text):
 
     return None
 
-def extract_numeric_value_from_line(keyword, text):
+import re
 
-    if keyword == "CGST":
+def extract_cgst(text):
+
+    patterns = [
+
+        r'CGST.*?([\d,]+\.\d+)',
+
+        r'CGST\s*\(?[\d.]*%?\)?\s*([\d,]+\.\d+)',
+
+        r'Central\s+Tax.*?([\d,]+\.\d+)'
+
+    ]
+
+    for pattern in patterns:
 
         match = re.search(
-            r'CGST\|?\s*(\d+\.\d+)',
+
+            pattern,
+
             text,
-            re.IGNORECASE
+
+            re.IGNORECASE | re.DOTALL
+
         )
 
         if match:
 
             return float(
-                match.group(1)
-            )
 
-    elif keyword == "SGST":
+                match.group(1).replace(",", "")
 
-        match = re.search(
-            r'SGST\|?\s*(\d+\.\d+)',
-            text,
-            re.IGNORECASE
-        )
-
-        if match:
-
-            return float(
-                match.group(1)
             )
 
     return 0
 
-def extract_taxable_amount(text):
+import re
+
+def extract_sgst(text):
+
+    patterns = [
+
+        r'SGST.*?([\d,]+\.\d+)',
+
+        r'SGST\s*\(?[\d.]*%?\)?\s*([\d,]+\.\d+)',
+
+        r'State\s+Tax.*?([\d,]+\.\d+)'
+
+    ]
+
+    for pattern in patterns:
+
+        match = re.search(
+
+            pattern,
+
+            text,
+
+            re.IGNORECASE | re.DOTALL
+
+        )
+
+        if match:
+
+            return float(
+
+                match.group(1).replace(",", "")
+
+            )
+
+    return 0
+
+import re
+
+def extract_total_amount(text):
+
+    patterns = [
+
+        r'Gross\s+Amount/?Total\s*[:\-]?\s*₹?\s*([\d,]+\.\d+)',
+
+        r'Total\s+Amount\s*[:\-]?\s*₹?\s*([\d,]+\.\d+)',
+
+        r'Invoice\s+Value\s*[:\-]?\s*₹?\s*([\d,]+\.\d+)',
+
+        r'Grand\s+Total\s*[:\-]?\s*₹?\s*([\d,]+\.\d+)'
+
+    ]
+
+    for pattern in patterns:
+
+        match = re.search(
+
+            pattern,
+
+            text,
+
+            re.IGNORECASE
+
+        )
+
+        if match:
+
+            return float(
+
+                match.group(1).replace(",", "")
+
+            )
+
+    # Fallback
 
     matches = re.findall(
-        r'(\d+\.\d+)',
+
+        r'[\d,]+\.\d+',
+
         text
+
+    )
+
+    if matches:
+
+        return max(
+
+            float(x.replace(",", ""))
+
+            for x in matches
+
+        )
+
+    return 0
+
+import re
+
+
+def extract_taxable_amount(text):
+
+    patterns = [
+
+        r"Total\s+Taxable\s+Value\s*[:\-]?\s*₹?\s*([\d,]+\.\d+)",
+
+        r"Taxable\s+Amount\s*[:\-]?\s*₹?\s*([\d,]+\.\d+)",
+
+        r"Sub\s*Total\s*[:\-]?\s*₹?\s*([\d,]+\.\d+)",
+
+        r"Net\s*Amount\s*[:\-]?\s*₹?\s*([\d,]+\.\d+)"
+
+    ]
+
+    for pattern in patterns:
+
+        match = re.search(
+
+            pattern,
+
+            text,
+
+            re.IGNORECASE
+
+        )
+
+        if match:
+
+            amount = match.group(1)
+
+            amount = amount.replace(",", "")
+
+            return float(amount)
+
+    # -----------------------------
+    # Fallback
+    # -----------------------------
+
+    matches = re.findall(
+
+        r'[\d,]+\.\d+',
+
+        text
+
     )
 
     candidates = []
 
     for value in matches:
 
-        num = float(value)
+        num = float(
 
-        if 100 <= num <= 10000:
+            value.replace(",", "")
+
+        )
+
+        if num >= 100:
 
             candidates.append(num)
 
@@ -122,70 +266,132 @@ def extract_taxable_amount(text):
     return 0
 
 
-def calculate_taxable_from_items(text):
-
-    lines = text.splitlines()
-
-    for line in lines:
-
-        if "EWC" in line or "NOS" in line:
-
-            numbers = re.findall(
-                r'\d+',
-                line
-            )
-
-            if numbers:
-
-                try:
-
-                    return int(
-                        numbers[-1]
-                    )
-
-                except:
-                    pass
-
-    return 0
-
+import re
 
 def extract_vendor_name(text):
 
-    patterns = [
+    lines = text.splitlines()
 
-        r"Sold By\s*:?\s*(.+)",
+    for i, line in enumerate(lines):
 
-        r"Supplier\s*:?\s*(.+)",
+        if "Sold By" in line:
 
-        r"Supplier Name\s*:?\s*(.+)",
+            if i + 1 < len(lines):
 
-        r"Vendor\s*:?\s*(.+)",
+                return lines[i + 1].strip().upper()
 
-        r"Legal Name\s*:?\s*(.+)",
+        if "Supplier Information" in line:
 
-        r"Issued By\s*:?\s*(.+)",
+            for j in range(i + 1, min(i + 8, len(lines))):
+
+                candidate = lines[j].strip()
+
+                if len(candidate) > 5:
+
+                    return candidate.upper()
+
+    blacklist = [
+
+        "",
+
+        "tax invoice",
+
+        "invoice",
+
+        "original for recipient",
+
+        "billing address",
+
+        "shipping address",
+
+        "customer details",
+
+        "supplier information",
+
+        "recipient information",
+
+        "delivery information",
+
+        "legal name",
+
+        "trade name",
+
+        "document no",
+
+        "document date",
+
+        "gstin",
+
+        "gst registration",
+
+        "state",
+
+        "place of supply"
 
     ]
 
-    for pattern in patterns:
+    # First preference:
+    # company immediately before GSTIN
 
-        match = re.search(
-            pattern,
-            text,
-            re.IGNORECASE
-        )
+    for i, line in enumerate(lines):
 
-        if match:
+        if "GSTIN" in line.upper() or "GST REGISTRATION" in line.upper():
 
-            vendor = match.group(1)
+            for j in range(i - 1, max(i - 6, -1), -1):
 
-            vendor = vendor.split("\n")[0]
+                candidate = lines[j].strip()
 
-            vendor = vendor.strip()
+                if len(candidate) < 3:
+                    continue
 
-            if len(vendor) > 3:
+                if any(word in candidate.lower() for word in blacklist):
+                    continue
 
-                return vendor
+                if re.search(r"\d{2}[A-Z]{5}\d{4}", candidate):
+                    continue
+
+                return candidate.upper()
+
+    # Second preference:
+    # first company-like name
+
+    for line in lines:
+
+        candidate = line.strip()
+
+        if len(candidate) < 5:
+            continue
+
+        if any(word in candidate.lower() for word in blacklist):
+            continue
+
+        if any(
+
+            keyword in candidate.upper()
+
+            for keyword in [
+
+                "LTD",
+
+                "LIMITED",
+
+                "LLP",
+
+                "PVT",
+
+                "PRIVATE",
+
+                "ENTERPRISE",
+
+                "CONSULTANTS",
+
+                "ASSOCIATES"
+
+            ]
+
+        ):
+
+            return candidate.upper()
 
     return "Unknown Vendor"
 
@@ -262,39 +468,76 @@ def extract_claim_voucher_number(text):
     return None
 
 
+import re
+from datetime import datetime
+
+
 def extract_invoice_date(text):
 
     patterns = [
 
-        r'Invoice\s*Date\s*[:\-]?\s*(\d{2}[./-]\d{2}[./-]\d{4})',
+        r'Invoice\s*Date\s*[:\-]?\s*(\d{1,2}[./-][A-Za-z]{3}[./-]\d{2,4})',
 
-        r'Document\s*Date\s*[:\-]?\s*(\d{2}[./-]\d{2}[./-]\d{4})',
+        r'Invoice\s*Date\s*[:\-]?\s*(\d{1,2}[./-]\d{1,2}[./-]\d{2,4})',
 
-        r'Bill\s*Date\s*[:\-]?\s*(\d{2}[./-]\d{2}[./-]\d{4})',
+        r'Document\s*Date\s*[:\-]?\s*(\d{1,2}[./-][A-Za-z]{3}[./-]\d{2,4})',
 
-        r'(\d{2}[./-]\d{2}[./-]\d{4})',
+        r'Document\s*Date\s*[:\-]?\s*(\d{1,2}[./-]\d{1,2}[./-]\d{2,4})',
 
+        r'Dated\s*[:\-]?\s*(\d{1,2}[./-][A-Za-z]{3}[./-]\d{2,4})',
+
+        r'Dated\s*[:\-]?\s*(\d{1,2}[./-]\d{1,2}[./-]\d{2,4})'
     ]
 
     for pattern in patterns:
 
         match = re.search(
+
             pattern,
+
             text,
+
             re.IGNORECASE
+
         )
 
         if match:
 
-            date = match.group(1)
+            date_str = match.group(1).strip()
 
-            date = date.replace(".", "-")
+            formats = [
 
-            date = date.replace("/", "-")
+                "%d-%b-%Y",
 
-            day, month, year = date.split("-")
+                "%d-%b-%y",
 
-            return f"{year}-{month}-{day}"
+                "%d.%m.%Y",
+
+                "%d.%m.%y",
+
+                "%d/%m/%Y",
+
+                "%d/%m/%y",
+
+                "%Y-%m-%d"
+
+            ]
+
+            for fmt in formats:
+
+                try:
+
+                    return datetime.strptime(
+
+                        date_str,
+
+                        fmt
+
+                    ).strftime("%Y-%m-%d")
+
+                except:
+
+                    pass
 
     return None
 
@@ -360,120 +603,54 @@ def auto_correct_amounts(
         total_amount
     )
 
-def extract_invoice_block(
-    text,
-    invoice_number
-):
+def extract_invoice_block(text, invoice_number):
 
     if invoice_number == "INV-TEMP":
-
         return text
 
     start = text.find(invoice_number)
 
     if start == -1:
-
         return text
 
-    previous = text.rfind(
+    previous_markers = [
         "Sold By",
-        0,
-        start
-    )
+        "Tax Invoice",
+        "Invoice",
+        "ORIGINAL FOR RECIPIENT",
+        "Customer Details"
+    ]
+
+    previous = -1
+
+    for marker in previous_markers:
+
+        pos = text.rfind(marker, 0, start)
+
+        if pos > previous:
+            previous = pos
 
     if previous == -1:
+        previous = max(0, start - 600)
 
-        previous = max(
-            0,
-            start - 400
-        )
-
-    next_invoice = text.find(
+    next_markers = [
+        "Page 2",
+        "Page 3",
         "Sold By",
-        start + len(invoice_number)
-    )
-
-    if next_invoice == -1:
-
-        next_invoice = len(text)
-
-    block = text[
-        previous:next_invoice
+        "Tax Invoice"
     ]
 
-    return block
+    next_pos = len(text)
 
-def extract_cgst(text):
+    for marker in next_markers:
 
-    match = re.search(
-        r'CGST\|\s*(\d+\.\d+)',
-        text,
-        re.IGNORECASE
-    )
+        pos = text.find(marker, start + len(invoice_number))
 
-    if match:
+        if pos != -1 and pos < next_pos:
+            next_pos = pos
 
-        value = float(
-            match.group(1)
-        )
+    return text[previous:next_pos]
 
-        if value > 20:
-
-            value = round(
-                value / 6,
-                2
-            )
-
-        return value
-
-    return 0
-
-def extract_sgst(text):
-
-    match = re.search(
-        r'SGST\|\s*(\d+\.\d+)',
-        text,
-        re.IGNORECASE
-    )
-
-    if match:
-
-        value = float(
-            match.group(1)
-        )
-
-        if value > 20:
-
-            value = round(
-                value / 6,
-                2
-            )
-
-        return value
-
-    return 0
-
-def extract_total_amount(text):
-
-    amounts = re.findall(
-        r'(\d+\.\d+)',
-        text
-    )
-
-    amounts = [
-
-        float(x)
-
-        for x in amounts
-
-        if float(x) > 200
-    ]
-
-    if amounts:
-
-        return max(amounts)
-
-    return 0
 
 def parse_invoice_data(raw_invoice: dict):
 
@@ -508,13 +685,10 @@ def parse_invoice_data(raw_invoice: dict):
         invoice_number
     )
 
-    print(
-        "\n========== INVOICE BLOCK ==========\n",
-        len(invoice_block)
-    )
-
+    print("\n========== INVOICE BLOCK ==========")
     print(f"Invoice Block Length: {len(invoice_block)}")
     print(invoice_block[:700])
+    print("==================================")
 
     vendor_name = extract_vendor_name(
         invoice_block
